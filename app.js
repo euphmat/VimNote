@@ -96,6 +96,7 @@ localStorage.setItem("note", idea);
     theme: themes.some((theme) => theme.id === document.documentElement.dataset.theme)
       ? document.documentElement.dataset.theme
       : "paper",
+    draggedNoteId: null,
     saveTimer: null,
     lastEscapeAt: 0,
   };
@@ -452,6 +453,7 @@ localStorage.setItem("note", idea);
           const button = document.createElement("button");
           button.type = "button";
           button.className = `nav-item${state.folderFilter === folder.id ? " is-active" : ""}`;
+          button.setAttribute("aria-label", `${folder.name}、${folder.count}件。ノートをドロップして移動`);
           button.innerHTML = `
             <span class="flex min-w-0 items-center gap-3">
               <i data-lucide="folder" aria-hidden="true"></i>
@@ -466,6 +468,28 @@ localStorage.setItem("note", idea);
             closeMobileMenu();
             lucide.createIcons();
           });
+          button.addEventListener("dragenter", (event) => {
+            if (!state.draggedNoteId) return;
+            event.preventDefault();
+            button.classList.add("is-drop-target");
+          });
+          button.addEventListener("dragover", (event) => {
+            if (!state.draggedNoteId) return;
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "move";
+            button.classList.add("is-drop-target");
+          });
+          button.addEventListener("dragleave", (event) => {
+            if (!button.contains(event.relatedTarget)) {
+              button.classList.remove("is-drop-target");
+            }
+          });
+          button.addEventListener("drop", (event) => {
+            event.preventDefault();
+            const noteId = state.draggedNoteId || event.dataTransfer.getData("text/plain");
+            cleanupNoteDrag();
+            moveNoteToFolder(noteId, folder.id);
+          });
           return button;
         }),
     );
@@ -477,6 +501,7 @@ localStorage.setItem("note", idea);
       ...notes.map((note) => {
         const card = document.createElement("button");
         card.type = "button";
+        card.draggable = true;
         card.className = `note-card${note.id === state.activeId ? " is-active" : ""}`;
         card.dataset.id = note.id;
         const pin = note.pinned ? '<i data-lucide="pin" aria-hidden="true"></i>' : "";
@@ -490,6 +515,14 @@ localStorage.setItem("note", idea);
           ${folder ? `<span class="note-folder"><i data-lucide="folder" aria-hidden="true"></i>${escapeHtml(folder.name)}</span>` : ""}
         `;
         card.addEventListener("click", () => selectNote(note.id));
+        card.addEventListener("dragstart", (event) => {
+          state.draggedNoteId = note.id;
+          event.dataTransfer.effectAllowed = "move";
+          event.dataTransfer.setData("text/plain", note.id);
+          document.documentElement.classList.add("is-note-dragging");
+          requestAnimationFrame(() => card.classList.add("is-dragging"));
+        });
+        card.addEventListener("dragend", cleanupNoteDrag);
         return card;
       }),
     );
@@ -638,17 +671,29 @@ localStorage.setItem("note", idea);
   }
 
   function moveActiveToFolder(folderId) {
-    const note = getActiveNote();
+    moveNoteToFolder(state.activeId, folderId, true);
+  }
+
+  function moveNoteToFolder(noteId, folderId, followFolder = false) {
+    const note = state.notes.find((item) => item.id === noteId);
     const folder = getFolder(folderId);
     if (!note || !folder || note.folderId === folderId) return;
     note.folderId = folderId;
     note.updatedAt = Date.now();
-    if (state.folderFilter) state.folderFilter = folderId;
+    if (followFolder && state.folderFilter) state.folderFilter = folderId;
     persist();
     renderNavigation();
     renderNoteList();
-    renderFolderChip(note);
-    toast(`「${folder.name}」へ移動しました`);
+    if (note.id === state.activeId) renderFolderChip(note);
+    toast(`「${displayTitle(note)}」を「${folder.name}」へ移動しました`);
+  }
+
+  function cleanupNoteDrag() {
+    state.draggedNoteId = null;
+    document.documentElement.classList.remove("is-note-dragging");
+    document
+      .querySelectorAll(".is-dragging, .is-drop-target")
+      .forEach((element) => element.classList.remove("is-dragging", "is-drop-target"));
   }
 
   function renameFolder(folderId) {
