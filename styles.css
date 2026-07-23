@@ -398,7 +398,9 @@ input:focus-visible,
 
 .icon-button,
 .mini-icon-button,
-.primary-button {
+.primary-button,
+.secondary-button,
+.destructive-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -479,6 +481,42 @@ input:focus-visible,
   width: 16px;
   height: 16px;
   stroke-width: 2.2;
+}
+
+.secondary-button,
+.destructive-button {
+  min-height: 38px;
+  gap: 8px;
+  padding: 0 15px;
+  border-radius: 9px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.secondary-button {
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+}
+
+.secondary-button:hover {
+  border-color: var(--line-strong);
+  background: var(--paper-deep);
+}
+
+.destructive-button {
+  border: 1px solid color-mix(in srgb, var(--danger) 82%, var(--ink));
+  background: var(--danger);
+  color: var(--surface);
+}
+
+.destructive-button:hover {
+  background: color-mix(in srgb, var(--danger) 88%, var(--ink));
+}
+
+.destructive-button svg {
+  width: 15px;
+  height: 15px;
 }
 
 .mini-icon-button {
@@ -1233,6 +1271,22 @@ input:focus-visible,
 
 .app-dialog-small {
   width: min(460px, calc(100vw - 32px));
+}
+
+.delete-dialog-icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--danger) 35%, var(--line));
+  border-radius: 10px;
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+.delete-dialog-icon svg {
+  width: 20px;
+  height: 20px;
 }
 
 .dialog-heading {

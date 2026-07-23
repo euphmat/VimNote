@@ -347,6 +347,29 @@
       <div id="editable-folders" class="folder-manager-list"></div>
     </dialog>
 
+    <dialog id="delete-note-dialog" class="app-dialog app-dialog-small">
+      <div class="delete-dialog-icon" aria-hidden="true">
+        <i data-lucide="trash-2"></i>
+      </div>
+      <div class="mt-5">
+        <p class="section-label mb-1">Delete note</p>
+        <h2 class="font-serif text-2xl">このメモを削除しますか？</h2>
+        <p class="mt-3 text-xs leading-relaxed text-muted">
+          「<span id="delete-note-name" class="font-semibold text-ink"></span>」を削除します。
+          この操作は取り消せません。
+        </p>
+      </div>
+      <div class="mt-7 flex justify-end gap-2">
+        <button class="secondary-button" data-close-dialog type="button" autofocus>
+          キャンセル
+        </button>
+        <button id="confirm-delete-note" class="destructive-button" type="button">
+          <i data-lucide="trash-2" aria-hidden="true"></i>
+          削除する
+        </button>
+      </div>
+    </dialog>
+
     <dialog id="theme-dialog" class="app-dialog">
       <div class="dialog-heading">
         <div>

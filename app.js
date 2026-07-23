@@ -131,6 +131,9 @@ localStorage.setItem("note", idea);
     folderForm: document.querySelector("#folder-form"),
     folderInput: document.querySelector("#folder-input"),
     editableFolders: document.querySelector("#editable-folders"),
+    deleteNoteDialog: document.querySelector("#delete-note-dialog"),
+    deleteNoteName: document.querySelector("#delete-note-name"),
+    confirmDeleteNote: document.querySelector("#confirm-delete-note"),
     themeDialog: document.querySelector("#theme-dialog"),
     themeGrid: document.querySelector("#theme-grid"),
     toastRegion: document.querySelector("#toast-region"),
@@ -294,11 +297,17 @@ localStorage.setItem("note", idea);
     toast("新しいメモを作成しました");
   }
 
+  function openDeleteNoteDialog() {
+    const note = getActiveNote();
+    if (!note) return;
+    el.deleteNoteName.textContent = displayTitle(note);
+    el.deleteNoteDialog.showModal();
+  }
+
   function deleteActiveNote() {
     const note = getActiveNote();
     if (!note) return;
-    const ok = window.confirm(`「${displayTitle(note)}」を削除しますか？`);
-    if (!ok) return;
+    el.deleteNoteDialog.close();
     const index = state.notes.findIndex((item) => item.id === note.id);
     state.notes.splice(index, 1);
     state.activeId = state.notes[index]?.id || state.notes[index - 1]?.id || null;
@@ -872,7 +881,8 @@ localStorage.setItem("note", idea);
   el.sidebarToggle.addEventListener("click", toggleSidebar);
   el.backdrop.addEventListener("click", closeMobileMenu);
   el.pin.addEventListener("click", togglePin);
-  el.remove.addEventListener("click", deleteActiveNote);
+  el.remove.addEventListener("click", openDeleteNoteDialog);
+  el.confirmDeleteNote.addEventListener("click", deleteActiveNote);
   document.querySelector("#export-button").addEventListener("click", exportActiveNote);
   document
     .querySelector("#shortcuts-button")
