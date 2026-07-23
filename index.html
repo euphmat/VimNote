@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f1e8" />
+    <meta
+      name="description"
+      content="Vimキーバインドで書ける、ブラウザ保存のMarkdownメモアプリ"
+    />
+    <title>VimNote — 考えを、手元に。</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&display=swap"
+      rel="stylesheet"
+    />
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              paper: "#f5f1e8",
+              ink: "#252421",
+              muted: "#77736b",
+              coral: "#e7644b",
+              line: "#ded8cc",
+            },
+            fontFamily: {
+              sans: ["DM Sans", "ui-sans-serif", "system-ui"],
+              serif: ["Fraunces", "ui-serif", "Georgia"],
+              mono: ["DM Mono", "ui-monospace", "monospace"],
+            },
+          },
+        },
+      };
+    </script>
+
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/atom-one-light.min.css"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+
+  <body class="bg-paper font-sans text-ink antialiased">
+    <div id="app" class="min-h-screen overflow-hidden">
+      <header
+        class="app-header flex h-16 items-center justify-between border-b border-line bg-paper px-4 md:px-6"
+      >
+        <div class="flex min-w-0 items-center gap-3">
+          <button
+            id="mobile-menu-button"
+            class="icon-button md:hidden"
+            type="button"
+            aria-label="メニューを開く"
+            data-tooltip="メニュー"
+          >
+            <i data-lucide="panel-left" aria-hidden="true"></i>
+          </button>
+          <div class="brand-mark" aria-hidden="true">V</div>
+          <div class="min-w-0">
+            <h1 class="font-serif text-xl leading-none tracking-tight">VimNote</h1>
+            <p class="mt-1 hidden text-[10px] font-semibold uppercase tracking-[0.19em] text-muted sm:block">
+              Your thoughts, close at hand
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <div id="sync-state" class="save-state mr-2 hidden sm:flex" aria-live="polite">
+            <span class="save-dot"></span>
+            <span>この端末に保存済み</span>
+          </div>
+          <button
+            id="export-button"
+            class="icon-button"
+            type="button"
+            aria-label="ノートをエクスポート"
+            data-tooltip="Markdownを書き出す"
+          >
+            <i data-lucide="download" aria-hidden="true"></i>
+          </button>
+          <button
+            id="shortcuts-button"
+            class="icon-button"
+            type="button"
+            aria-label="キーボードショートカット"
+            data-tooltip="ショートカット"
+          >
+            <i data-lucide="keyboard" aria-hidden="true"></i>
+          </button>
+          <button
+            id="new-note-button-header"
+            class="primary-button ml-1"
+            type="button"
+          >
+            <i data-lucide="plus" aria-hidden="true"></i>
+            <span class="hidden sm:inline">新しいメモ</span>
+          </button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <aside id="navigation" class="navigation-panel">
+          <div class="nav-section">
+            <p class="section-label">Workspace</p>
+            <nav aria-label="メモの絞り込み" class="space-y-1">
+              <button class="nav-item is-active" data-filter="all" type="button">
+                <span class="flex items-center gap-3">
+                  <i data-lucide="files" aria-hidden="true"></i>
+                  すべてのメモ
+                </span>
+                <span id="all-count" class="nav-count">0</span>
+              </button>
+              <button class="nav-item" data-filter="pinned" type="button">
+                <span class="flex items-center gap-3">
+                  <i data-lucide="pin" aria-hidden="true"></i>
+                  ピン留め
+                </span>
+                <span id="pinned-count" class="nav-count">0</span>
+              </button>
+            </nav>
+          </div>
+
+          <div class="nav-divider"></div>
+
+          <div class="nav-section min-h-0 flex-1">
+            <div class="mb-2 flex items-center justify-between">
+              <p class="section-label mb-0">Tags</p>
+              <button
+                id="manage-tags-button"
+                class="mini-icon-button"
+                type="button"
+                aria-label="タグを編集"
+                data-tooltip="タグを編集"
+              >
+                <i data-lucide="tag" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div id="tag-list" class="space-y-1 overflow-y-auto"></div>
+          </div>
+
+          <div class="storage-note">
+            <i data-lucide="hard-drive" aria-hidden="true"></i>
+            <div>
+              <p class="font-semibold text-ink">ローカル保存</p>
+              <p>データはこのブラウザの中だけに保存されます。</p>
+            </div>
+          </div>
+        </aside>
+
+        <section id="note-browser" class="note-browser">
+          <div class="browser-tools">
+            <label class="search-box">
+              <i data-lucide="search" aria-hidden="true"></i>
+              <input
+                id="search-input"
+                type="search"
+                autocomplete="off"
+                placeholder="メモを検索..."
+                aria-label="メモを検索"
+              />
+              <kbd>⌘ K</kbd>
+            </label>
+            <div class="mt-4 flex items-end justify-between">
+              <div>
+                <p id="list-eyebrow" class="section-label mb-1">All notes</p>
+                <h2 id="list-title" class="font-serif text-2xl tracking-tight">すべてのメモ</h2>
+              </div>
+              <button
+                id="sort-button"
+                class="mini-icon-button"
+                type="button"
+                aria-label="並び順を変更"
+                data-tooltip="更新順"
+              >
+                <i data-lucide="arrow-down-wide-narrow" aria-hidden="true"></i>
+              </button>
+            </div>
+          </div>
+          <div id="notes-list" class="notes-list" aria-label="メモ一覧"></div>
+          <div id="empty-list" class="empty-list hidden">
+            <i data-lucide="search-x" aria-hidden="true"></i>
+            <p class="font-semibold text-ink">見つかりませんでした</p>
+            <p>検索語やフィルターを変えてみてください。</p>
+          </div>
+        </section>
+
+        <section id="editor-panel" class="editor-panel">
+          <div id="empty-editor" class="empty-editor hidden">
+            <div class="empty-illustration" aria-hidden="true">
+              <i data-lucide="feather"></i>
+            </div>
+            <h2 class="font-serif text-3xl">まっさらな一枚から。</h2>
+            <p>新しいメモを作って、考えを書き留めましょう。</p>
+            <button id="new-note-button-empty" class="primary-button mt-5" type="button">
+              <i data-lucide="plus" aria-hidden="true"></i>
+              新しいメモ
+            </button>
+          </div>
+
+          <div id="editor-shell" class="editor-shell">
+            <div class="editor-toolbar">
+              <div class="min-w-0">
+                <p id="updated-at" class="text-xs font-medium text-muted"></p>
+                <div id="tag-chips" class="mt-1.5 flex flex-wrap gap-1.5"></div>
+              </div>
+              <div class="flex shrink-0 items-center gap-1">
+                <div class="view-switch" role="group" aria-label="表示切り替え">
+                  <button class="view-option is-active" data-view="edit" type="button">編集</button>
+                  <button class="view-option" data-view="preview" type="button">プレビュー</button>
+                </div>
+                <button
+                  id="pin-button"
+                  class="icon-button"
+                  type="button"
+                  aria-label="ピン留め"
+                  data-tooltip="ピン留め"
+                >
+                  <i data-lucide="pin" aria-hidden="true"></i>
+                </button>
+                <button
+                  id="delete-button"
+                  class="icon-button danger-hover"
+                  type="button"
+                  aria-label="メモを削除"
+                  data-tooltip="削除"
+                >
+                  <i data-lucide="trash-2" aria-hidden="true"></i>
+                </button>
+              </div>
+            </div>
+
+            <div class="title-wrap">
+              <input
+                id="note-title"
+                class="note-title"
+                type="text"
+                autocomplete="off"
+                placeholder="無題のメモ"
+                aria-label="メモのタイトル"
+              />
+            </div>
+
+            <div id="editor-wrap" class="editor-wrap">
+              <textarea id="markdown-editor" aria-label="Markdownエディター"></textarea>
+            </div>
+            <article id="preview" class="markdown-preview hidden"></article>
+
+            <footer class="editor-status">
+              <div class="flex items-center gap-3">
+                <span id="vim-mode" class="vim-mode">NORMAL</span>
+                <span id="cursor-position" class="font-mono">1:1</span>
+                <span class="hidden sm:inline">markdown</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span id="word-count">0 文字</span>
+                <span class="hidden sm:inline">UTF-8</span>
+                <span>LF</span>
+              </div>
+            </footer>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <div id="mobile-backdrop" class="mobile-backdrop hidden"></div>
+
+    <dialog id="shortcuts-dialog" class="app-dialog">
+      <div class="dialog-heading">
+        <div>
+          <p class="section-label mb-1">Vim mode</p>
+          <h2 class="font-serif text-2xl">キーボード操作</h2>
+        </div>
+        <button class="icon-button" data-close-dialog type="button" aria-label="閉じる">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="shortcut-grid">
+        <span><kbd>i</kbd> 挿入モード</span>
+        <span><kbd>jj</kbd> / <kbd>Esc</kbd> ノーマルモード</span>
+        <span><kbd>:</kbd> コマンド</span>
+        <span><kbd>/</kbd> インクリメンタル検索</span>
+        <span><kbd>Esc Esc</kbd> 検索ハイライト解除</span>
+        <span><kbd>⌘ K</kbd> メモ検索</span>
+        <span><kbd>⌘ N</kbd> 新しいメモ</span>
+        <span><kbd>⌘ ⇧ P</kbd> プレビュー切替</span>
+      </div>
+      <p class="dialog-note">
+        入力は常に Markdown。タブは2スペースに展開され、変更はこの端末へ自動保存されます。
+      </p>
+    </dialog>
+
+    <dialog id="tag-dialog" class="app-dialog app-dialog-small">
+      <div class="dialog-heading">
+        <div>
+          <p class="section-label mb-1">Organize</p>
+          <h2 class="font-serif text-2xl">タグを編集</h2>
+        </div>
+        <button class="icon-button" data-close-dialog type="button" aria-label="閉じる">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
+      <form id="tag-form" class="mt-6">
+        <label for="tag-input" class="mb-2 block text-sm font-semibold">タグ名</label>
+        <div class="flex gap-2">
+          <input id="tag-input" class="text-input" maxlength="24" placeholder="例: アイデア" />
+          <button class="primary-button" type="submit">追加</button>
+        </div>
+      </form>
+      <div id="editable-tags" class="mt-5 flex flex-wrap gap-2"></div>
+    </dialog>
+
+    <div id="toast-region" class="toast-region" aria-live="polite"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/keymap/vim.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/xml/xml.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/css/css.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/htmlmixed/htmlmixed.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/dialog/dialog.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/search/searchcursor.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+    <script src="https://unpkg.com/lucide@0.468.0/dist/umd/lucide.min.js"></script>
+    <script src="./app.js"></script>
+  </body>
+</html>
