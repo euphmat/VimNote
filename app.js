@@ -6,6 +6,7 @@
   const THEME_KEY = "vimnote.theme.v1";
   const FOLDERS_KEY = "vimnote.folders.v1";
   const SIDEBAR_KEY = "vimnote.sidebar-collapsed.v1";
+  const NOTE_DENSITY_KEY = "vimnote.note-density.v1";
   const encoder = new TextEncoder();
   const themes = [
     { id: "paper", name: "Paper", description: "Soft and warm", colors: ["#f5f1e8", "#252421", "#e7644b"] },
@@ -48,6 +49,10 @@
     query: "",
     sortAscending: false,
     view: "edit",
+    noteDensity:
+      document.documentElement.dataset.noteDensity === "compact"
+        ? "compact"
+        : "comfortable",
     sidebarCollapsed: document.documentElement.dataset.sidebar === "collapsed",
     theme: themes.some((theme) => theme.id === document.documentElement.dataset.theme)
       ? document.documentElement.dataset.theme
@@ -60,6 +65,11 @@
     contextMenuMode: "actions",
     contextMenuX: 0,
     contextMenuY: 0,
+    contextNoteId: null,
+    noteContextMode: "actions",
+    noteContextX: 0,
+    noteContextY: 0,
+    pendingDeleteNoteId: null,
     saveTimer: null,
     lastEscapeAt: 0,
   };
@@ -100,6 +110,7 @@
     folderInput: document.querySelector("#folder-input"),
     editableFolders: document.querySelector("#editable-folders"),
     folderContextMenu: document.querySelector("#folder-context-menu"),
+    noteContextMenu: document.querySelector("#note-context-menu"),
     deleteNoteDialog: document.querySelector("#delete-note-dialog"),
     deleteNoteName: document.querySelector("#delete-note-name"),
     confirmDeleteNote: document.querySelector("#confirm-delete-note"),
@@ -387,28 +398,33 @@
     toast("New note created");
   }
 
-  function openDeleteNoteDialog() {
-    const note = getActiveNote();
+  function openDeleteNoteDialog(noteId = state.activeId) {
+    const note = state.notes.find((item) => item.id === noteId);
     if (!note) return;
+    state.pendingDeleteNoteId = note.id;
     el.deleteNoteName.textContent = displayTitle(note);
     el.deleteNoteDialog.showModal();
   }
 
   function deleteActiveNote() {
-    const note = getActiveNote();
+    const noteId = state.pendingDeleteNoteId || state.activeId;
+    const note = state.notes.find((item) => item.id === noteId);
     if (!note) return;
     el.deleteNoteDialog.close();
     const index = state.notes.findIndex((item) => item.id === note.id);
     state.notes.splice(index, 1);
-    state.activeId = state.notes[index]?.id || state.notes[index - 1]?.id || null;
+    if (state.activeId === note.id) {
+      state.activeId = state.notes[index]?.id || state.notes[index - 1]?.id || null;
+    }
+    state.pendingDeleteNoteId = null;
     persist();
     render();
     if (!state.activeId) closeEditorOnMobile();
     toast("Note deleted");
   }
 
-  function togglePin() {
-    const note = getActiveNote();
+  function togglePin(noteId = state.activeId) {
+    const note = state.notes.find((item) => item.id === noteId);
     if (!note) return;
     note.pinned = !note.pinned;
     note.updatedAt = Date.now();
@@ -487,6 +503,7 @@
 
   function render() {
     applyTheme(state.theme, false);
+    syncNoteDensity();
     syncSidebar();
     renderNavigation();
     renderNoteList();
@@ -570,6 +587,34 @@
       ?.setAttribute("content", theme.colors[0]);
     renderThemeChoices();
     if (announce) toast(`Theme changed to ${theme.name}`);
+  }
+
+  function setNoteDensity(density, announce = true) {
+    state.noteDensity = density === "compact" ? "compact" : "comfortable";
+    document.documentElement.dataset.noteDensity = state.noteDensity;
+    try {
+      localStorage.setItem(NOTE_DENSITY_KEY, state.noteDensity);
+    } catch {
+      // Keep the current-session density when storage is unavailable.
+    }
+    syncNoteDensity();
+    if (announce) {
+      toast(
+        state.noteDensity === "compact"
+          ? "Compact note list enabled"
+          : "Comfortable note list enabled",
+      );
+    }
+  }
+
+  function syncNoteDensity() {
+    document
+      .querySelectorAll("[data-note-density-option]")
+      .forEach((button) => {
+        const active = button.dataset.noteDensityOption === state.noteDensity;
+        button.classList.toggle("is-active", active);
+        button.setAttribute("aria-pressed", String(active));
+      });
   }
 
   function renderThemeChoices() {
@@ -700,6 +745,12 @@
           ${folder ? `<span class="note-folder" style="--folder-color:${folder.color}"><i data-lucide="folder" aria-hidden="true"></i>${escapeHtml(folder.name)}</span>` : ""}
         `;
         card.addEventListener("click", () => selectNote(note.id));
+        card.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          openNoteContextMenu(note.id, event.clientX, event.clientY);
+          card.classList.add("is-context-target");
+        });
         card.addEventListener("dragstart", (event) => {
           state.draggedNoteId = note.id;
           event.dataTransfer.effectAllowed = "move";

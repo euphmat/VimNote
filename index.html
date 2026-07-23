@@ -15,17 +15,23 @@
       (() => {
         let savedTheme = "paper";
         let sidebarState = "expanded";
+        let noteDensity = "comfortable";
         try {
           savedTheme = localStorage.getItem("vimnote.theme.v1") || "paper";
           sidebarState =
             localStorage.getItem("vimnote.sidebar-collapsed.v1") === "true"
               ? "collapsed"
               : "expanded";
+          noteDensity =
+            localStorage.getItem("vimnote.note-density.v1") === "compact"
+              ? "compact"
+              : "comfortable";
         } catch {
           // Storage may be unavailable in a privacy-restricted browser.
         }
         document.documentElement.dataset.theme = savedTheme;
         document.documentElement.dataset.sidebar = sidebarState;
+        document.documentElement.dataset.noteDensity = noteDensity;
       })();
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -214,15 +220,39 @@
                 <p id="list-eyebrow" class="section-label mb-1">All notes</p>
                 <h2 id="list-title" class="font-serif text-2xl tracking-tight">All notes</h2>
               </div>
-              <button
-                id="sort-button"
-                class="mini-icon-button"
-                type="button"
-                aria-label="Change sort order"
-                data-tooltip="Recently updated"
-              >
-                <i data-lucide="arrow-down-wide-narrow" aria-hidden="true"></i>
-              </button>
+              <div class="flex items-center gap-1.5">
+                <div class="density-switch" role="group" aria-label="Note list density">
+                  <button
+                    class="density-option is-active"
+                    type="button"
+                    data-note-density-option="comfortable"
+                    aria-label="Comfortable note list"
+                    aria-pressed="true"
+                    data-tooltip="Comfortable"
+                  >
+                    <i data-lucide="rows-3" aria-hidden="true"></i>
+                  </button>
+                  <button
+                    class="density-option"
+                    type="button"
+                    data-note-density-option="compact"
+                    aria-label="Compact note list"
+                    aria-pressed="false"
+                    data-tooltip="Compact"
+                  >
+                    <i data-lucide="list" aria-hidden="true"></i>
+                  </button>
+                </div>
+                <button
+                  id="sort-button"
+                  class="mini-icon-button"
+                  type="button"
+                  aria-label="Change sort order"
+                  data-tooltip="Recently updated"
+                >
+                  <i data-lucide="arrow-down-wide-narrow" aria-hidden="true"></i>
+                </button>
+              </div>
             </div>
           </div>
           <div id="notes-list" class="notes-list" aria-label="Notes"></div>
@@ -396,6 +426,14 @@
       class="folder-context-menu hidden"
       role="menu"
       aria-label="Folder actions"
+      popover="manual"
+    ></div>
+
+    <div
+      id="note-context-menu"
+      class="folder-context-menu note-context-menu hidden"
+      role="menu"
+      aria-label="Note actions"
       popover="manual"
     ></div>
 
