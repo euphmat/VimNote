@@ -10,17 +10,28 @@
     />
     <title>VimNote — 考えを、手元に。</title>
 
+    <script>
+      (() => {
+        let savedTheme = "paper";
+        try {
+          savedTheme = localStorage.getItem("vimnote.theme.v1") || "paper";
+        } catch {
+          // Storage may be unavailable in a privacy-restricted browser.
+        }
+        document.documentElement.dataset.theme = savedTheme;
+      })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
         theme: {
           extend: {
             colors: {
-              paper: "#f5f1e8",
-              ink: "#252421",
-              muted: "#77736b",
-              coral: "#e7644b",
-              line: "#ded8cc",
+              paper: "var(--paper)",
+              ink: "var(--ink)",
+              muted: "var(--muted)",
+              coral: "var(--coral)",
+              line: "var(--line)",
             },
             fontFamily: {
               sans: ["Sarasa Term J", "Sarasa Mono J", "ui-monospace", "monospace"],
@@ -76,6 +87,15 @@
             <span class="save-dot"></span>
             <span>この端末に保存済み</span>
           </div>
+          <button
+            id="theme-button"
+            class="icon-button"
+            type="button"
+            aria-label="テーマを変更"
+            data-tooltip="テーマ"
+          >
+            <i data-lucide="palette" aria-hidden="true"></i>
+          </button>
           <button
             id="export-button"
             class="icon-button"
@@ -314,6 +334,22 @@
         </div>
       </form>
       <div id="editable-tags" class="mt-5 flex flex-wrap gap-2"></div>
+    </dialog>
+
+    <dialog id="theme-dialog" class="app-dialog">
+      <div class="dialog-heading">
+        <div>
+          <p class="section-label mb-1">Appearance</p>
+          <h2 class="font-serif text-2xl">テーマを選ぶ</h2>
+        </div>
+        <button class="icon-button" data-close-dialog type="button" aria-label="閉じる">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
+      <p class="mt-3 text-xs leading-relaxed text-muted">
+        選んだテーマはこのブラウザに保存され、次回も引き継がれます。
+      </p>
+      <div id="theme-grid" class="theme-grid" role="radiogroup" aria-label="カラーテーマ"></div>
     </dialog>
 
     <div id="toast-region" class="toast-region" aria-live="polite"></div>

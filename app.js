@@ -3,7 +3,20 @@
 
   const STORAGE_KEY = "vimnote.notes.v1";
   const ACTIVE_KEY = "vimnote.active.v1";
+  const THEME_KEY = "vimnote.theme.v1";
   const encoder = new TextEncoder();
+  const themes = [
+    { id: "paper", name: "Paper", description: "やわらかな紙", colors: ["#f5f1e8", "#252421", "#e7644b"] },
+    { id: "midnight", name: "Midnight", description: "深夜のブルー", colors: ["#10141c", "#edf1f7", "#ff7a66"] },
+    { id: "charcoal", name: "Charcoal", description: "静かな墨色", colors: ["#171717", "#f1eee8", "#e78b61"] },
+    { id: "forest", name: "Forest", description: "深い森の緑", colors: ["#13201b", "#eef3e8", "#e3a65a"] },
+    { id: "ocean", name: "Ocean", description: "落ち着いた海", colors: ["#0e1c24", "#e9f3f5", "#6dc5d6"] },
+    { id: "plum", name: "Plum", description: "夜の紫", colors: ["#211725", "#f4edf3", "#d987b8"] },
+    { id: "sepia", name: "Sepia", description: "古いノート", colors: ["#eee3cf", "#392e23", "#a75638"] },
+    { id: "slate", name: "Slate", description: "端正な青灰", colors: ["#e8edf0", "#253039", "#4f7596"] },
+    { id: "sakura", name: "Sakura", description: "淡い桜色", colors: ["#f8ecef", "#382b31", "#c95078"] },
+    { id: "solarized", name: "Solarized", description: "低コントラスト", colors: ["#fdf6e3", "#073642", "#cb4b16"] },
+  ];
 
   const starterNotes = [
     {
@@ -71,6 +84,9 @@ localStorage.setItem("note", idea);
     query: "",
     sortAscending: false,
     view: "edit",
+    theme: themes.some((theme) => theme.id === document.documentElement.dataset.theme)
+      ? document.documentElement.dataset.theme
+      : "paper",
     saveTimer: null,
     lastEscapeAt: 0,
   };
@@ -105,6 +121,8 @@ localStorage.setItem("note", idea);
     tagForm: document.querySelector("#tag-form"),
     tagInput: document.querySelector("#tag-input"),
     editableTags: document.querySelector("#editable-tags"),
+    themeDialog: document.querySelector("#theme-dialog"),
+    themeGrid: document.querySelector("#theme-grid"),
     toastRegion: document.querySelector("#toast-region"),
   };
 
@@ -173,7 +191,12 @@ localStorage.setItem("note", idea);
     el.syncState.querySelector("span:last-child").textContent = saved
       ? "この端末に保存済み"
       : "保存できませんでした";
-    el.syncState.querySelector(".save-dot").style.background = saved ? "#629167" : "#c84938";
+    el.syncState.querySelector(".save-dot").style.background = saved
+      ? "var(--success)"
+      : "var(--danger)";
+    el.syncState.querySelector(".save-dot").style.boxShadow = saved
+      ? "0 0 0 3px var(--success-soft)"
+      : "0 0 0 3px var(--danger-soft)";
   }
 
   function getActiveNote() {
@@ -298,9 +321,55 @@ localStorage.setItem("note", idea);
   }
 
   function render() {
+    applyTheme(state.theme, false);
     renderNavigation();
     renderNoteList();
     loadActiveNote();
+    renderThemeChoices();
+    lucide.createIcons();
+  }
+
+  function applyTheme(themeId, announce = true) {
+    const theme = themes.find((item) => item.id === themeId) || themes[0];
+    state.theme = theme.id;
+    document.documentElement.dataset.theme = theme.id;
+    try {
+      localStorage.setItem(THEME_KEY, theme.id);
+    } catch {
+      // The visual theme still works for this session when storage is unavailable.
+    }
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", theme.colors[0]);
+    renderThemeChoices();
+    if (announce) toast(`${theme.name} テーマに変更しました`);
+  }
+
+  function renderThemeChoices() {
+    if (!el.themeGrid) return;
+    el.themeGrid.replaceChildren(
+      ...themes.map((theme) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = `theme-choice${state.theme === theme.id ? " is-active" : ""}`;
+        button.setAttribute("role", "radio");
+        button.setAttribute("aria-checked", String(state.theme === theme.id));
+        button.innerHTML = `
+          <span class="theme-preview" aria-hidden="true" style="--swatch-bg:${theme.colors[0]};--swatch-ink:${theme.colors[1]};--swatch-accent:${theme.colors[2]}">
+            <span></span><span></span><span></span>
+          </span>
+          <span class="min-w-0 text-left">
+            <strong>${theme.name}</strong>
+            <small>${theme.description}</small>
+          </span>
+          <i data-lucide="check" aria-hidden="true"></i>`;
+        button.addEventListener("click", () => {
+          applyTheme(theme.id);
+          lucide.createIcons();
+        });
+        return button;
+      }),
+    );
     lucide.createIcons();
   }
 
@@ -643,6 +712,10 @@ localStorage.setItem("note", idea);
   document
     .querySelector("#shortcuts-button")
     .addEventListener("click", () => el.shortcutsDialog.showModal());
+  document.querySelector("#theme-button").addEventListener("click", () => {
+    renderThemeChoices();
+    el.themeDialog.showModal();
+  });
   document.querySelector("#manage-tags-button").addEventListener("click", openTagDialog);
 
   document.querySelectorAll("[data-close-dialog]").forEach((button) => {

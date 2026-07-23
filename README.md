@@ -16,4 +16,5 @@ python3 -m http.server 4173
 - Markdown シンタックスハイライトとプレビュー
 - 自動保存、検索、ピン留め、タグ、Markdown エクスポート
 - Sarasa Term J を全UIとエディターに使用
+- ダークモードを含む10種類の保存可能なカラーテーマ
 - Tailwind CSS を使ったレスポンシブ UI
