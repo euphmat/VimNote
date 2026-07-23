@@ -1,4 +1,6 @@
 :root {
+  --font-sarasa: "Sarasa Term J", "Sarasa Mono J", "BIZ UDGothic", "Noto Sans Mono CJK JP",
+    ui-monospace, monospace;
   --paper: #f5f1e8;
   --paper-deep: #ede8dc;
   --surface: #fbf9f4;
@@ -22,6 +24,7 @@ body {
 body {
   margin: 0;
   background: var(--paper);
+  font-family: var(--font-sarasa);
 }
 
 button,
@@ -50,7 +53,7 @@ input:focus-visible,
   border-radius: 9px;
   background: var(--coral);
   color: white;
-  font-family: "Fraunces", serif;
+  font-family: var(--font-sarasa);
   font-size: 18px;
   box-shadow: 3px 3px 0 var(--ink);
 }
@@ -243,7 +246,7 @@ input:focus-visible,
 .nav-count {
   min-width: 20px;
   color: inherit;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-sarasa);
   font-size: 10px;
   text-align: right;
 }
@@ -326,7 +329,7 @@ input:focus-visible,
   border-radius: 5px;
   background: var(--paper);
   color: var(--muted);
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-sarasa);
   font-size: 9px;
 }
 
@@ -415,7 +418,7 @@ input:focus-visible,
 .note-date {
   flex: none;
   color: #999287;
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-sarasa);
   font-size: 9px;
 }
 
@@ -524,7 +527,7 @@ input:focus-visible,
   outline: 0 !important;
   background: transparent;
   color: var(--ink);
-  font-family: "Fraunces", serif;
+  font-family: var(--font-sarasa);
   font-size: clamp(27px, 3vw, 40px);
   font-weight: 600;
   letter-spacing: -0.035em;
@@ -546,7 +549,7 @@ input:focus-visible,
   padding: 0 0 20px;
   background: transparent;
   color: #383632;
-  font-family: "DM Mono", ui-monospace, monospace;
+  font-family: var(--font-sarasa);
   font-size: 13px;
   line-height: 1.82;
 }
@@ -624,7 +627,7 @@ input:focus-visible,
   border-radius: 8px;
   background: var(--surface);
   box-shadow: 3px 3px 0 var(--ink);
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-sarasa);
   font-size: 12px;
 }
 
@@ -655,7 +658,7 @@ input:focus-visible,
 .markdown-preview h3 {
   margin: 1.5em 0 0.55em;
   color: var(--ink);
-  font-family: "Fraunces", serif;
+  font-family: var(--font-sarasa);
   line-height: 1.25;
 }
 
@@ -701,7 +704,7 @@ input:focus-visible,
   padding: 2px 5px;
   border-radius: 4px;
   background: var(--paper-deep);
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-sarasa);
   font-size: 0.85em;
 }
 
@@ -762,7 +765,7 @@ input:focus-visible,
 .vim-mode {
   min-width: 54px;
   color: var(--coral);
-  font-family: "DM Mono", monospace;
+  font-family: var(--font-sarasa);
   font-weight: 700;
 }
 

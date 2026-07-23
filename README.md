@@ -15,4 +15,5 @@ python3 -m http.server 4173
 - CodeMirror の Vim モード（`jj` で Esc、`/` 検索、`:w` 保存）
 - Markdown シンタックスハイライトとプレビュー
 - 自動保存、検索、ピン留め、タグ、Markdown エクスポート
+- Sarasa Term J を全UIとエディターに使用
 - Tailwind CSS を使ったレスポンシブ UI
