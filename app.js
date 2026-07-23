@@ -399,6 +399,7 @@
   }
 
   function openDeleteNoteDialog(noteId = state.activeId) {
+    saveActiveNow();
     const note = state.notes.find((item) => item.id === noteId);
     if (!note) return;
     state.pendingDeleteNoteId = note.id;
@@ -424,12 +425,17 @@
   }
 
   function togglePin(noteId = state.activeId) {
+    saveActiveNow();
     const note = state.notes.find((item) => item.id === noteId);
     if (!note) return;
     note.pinned = !note.pinned;
     note.updatedAt = Date.now();
     persist();
-    render();
+    renderNavigation();
+    renderNoteList();
+    const activeNote = getActiveNote();
+    if (activeNote) updateMeta(activeNote);
+    lucide.createIcons();
     toast(note.pinned ? "Note pinned" : "Note unpinned");
   }
 
@@ -608,6 +614,7 @@
   }
 
   function syncNoteDensity() {
+    document.documentElement.dataset.noteDensity = state.noteDensity;
     document
       .querySelectorAll("[data-note-density-option]")
       .forEach((button) => {
@@ -732,7 +739,9 @@
         const card = document.createElement("button");
         card.type = "button";
         card.draggable = true;
-        card.className = `note-card${note.id === state.activeId ? " is-active" : ""}`;
+        card.className = `note-card${note.id === state.activeId ? " is-active" : ""}${
+          note.id === state.contextNoteId ? " is-context-target" : ""
+        }`;
         card.dataset.id = note.id;
         const pin = note.pinned ? '<i data-lucide="pin" aria-hidden="true"></i>' : "";
         const folder = getFolder(note.folderId);
@@ -1228,6 +1237,7 @@
   }
 
   function openFolderContextMenu(folderId, x, y, host = document.body) {
+    closeNoteContextMenu();
     closeFolderContextMenu();
     host.append(el.folderContextMenu);
     state.contextFolderId = folderId;
@@ -1422,9 +1432,191 @@
     lucide.createIcons();
   }
 
-  function exportActiveNote() {
-    saveActiveNow();
-    const note = getActiveNote();
+  function duplicateNote(noteId) {
+    if (noteId === state.activeId) saveActiveNow();
+    const source = state.notes.find((note) => note.id === noteId);
+    if (!source) return;
+    const sourceTitle = displayTitle(source);
+    const copiedTitle =
+      sourceTitle === "Untitled note" ? "Untitled copy" : `${sourceTitle} copy`;
+    const lines = String(source.content || "").split("\n");
+    if (hasFirstLineH1(source.content)) {
+      lines[0] = `# ${copiedTitle}`;
+    } else {
+      lines.unshift(`# ${copiedTitle}`, "");
+    }
+    const now = Date.now();
+    const copy = {
+      ...source,
+      id: crypto.randomUUID(),
+      title: copiedTitle,
+      content: lines.join("\n"),
+      pinned: false,
+      createdAt: now,
+      updatedAt: now,
+    };
+    const sourceIndex = state.notes.findIndex((note) => note.id === source.id);
+    state.notes.splice(sourceIndex + 1, 0, copy);
+    persist();
+    renderNavigation();
+    renderNoteList();
+    closeNoteContextMenu();
+    toast(`Duplicated “${sourceTitle}”`);
+  }
+
+  function openNoteContextMenu(noteId, x, y) {
+    closeFolderContextMenu();
+    closeNoteContextMenu();
+    document.body.append(el.noteContextMenu);
+    state.contextNoteId = noteId;
+    state.noteContextMode = "actions";
+    state.noteContextX = x;
+    state.noteContextY = y;
+    renderNoteContextMenu();
+  }
+
+  function closeNoteContextMenu() {
+    state.contextNoteId = null;
+    state.noteContextMode = "actions";
+    if (
+      typeof el.noteContextMenu.hidePopover === "function" &&
+      el.noteContextMenu.matches(":popover-open")
+    ) {
+      el.noteContextMenu.hidePopover();
+    }
+    el.noteContextMenu.classList.add("hidden");
+    el.noteContextMenu.replaceChildren();
+    document
+      .querySelectorAll(".note-card.is-context-target")
+      .forEach((card) => card.classList.remove("is-context-target"));
+  }
+
+  function renderNoteContextMenu() {
+    const note = state.notes.find((item) => item.id === state.contextNoteId);
+    if (!note) {
+      closeNoteContextMenu();
+      return;
+    }
+    const menu = el.noteContextMenu;
+    let content = "";
+    if (state.noteContextMode === "move") {
+      const folders = flattenedFolders()
+        .map(
+          ({ folder, depth }) => `
+            <button
+              type="button"
+              class="context-folder-option${note.folderId === folder.id ? " is-current" : ""}"
+              data-note-folder="${folder.id}"
+              style="--folder-color:${folder.color};--folder-indent:${depth * 13}px"
+              ${note.folderId === folder.id ? "disabled" : ""}
+            >
+              <span class="context-folder-indent" aria-hidden="true"></span>
+              <i data-lucide="${note.folderId === folder.id ? "folder-check" : "folder"}" aria-hidden="true"></i>
+              <span>${escapeHtml(folder.name)}</span>
+            </button>`,
+        )
+        .join("");
+      content = `
+        <div class="context-menu-panel">
+          <div class="context-panel-heading">
+            <button type="button" data-note-context-action="back" aria-label="Back">
+              <i data-lucide="arrow-left" aria-hidden="true"></i>
+            </button>
+            <strong>Move to folder</strong>
+          </div>
+          <div class="context-folder-list">${folders}</div>
+        </div>`;
+    } else {
+      content = `
+        <div class="context-menu-heading">
+          <i data-lucide="file-text" aria-hidden="true"></i>
+          <span>${escapeHtml(displayTitle(note))}</span>
+        </div>
+        <button type="button" role="menuitem" data-note-context-action="open">
+          <i data-lucide="square-arrow-out-up-right" aria-hidden="true"></i>Open note
+        </button>
+        <button type="button" role="menuitem" data-note-context-action="pin">
+          <i data-lucide="${note.pinned ? "pin-off" : "pin"}" aria-hidden="true"></i>
+          ${note.pinned ? "Unpin" : "Pin"} note
+        </button>
+        <button type="button" role="menuitem" data-note-context-action="duplicate">
+          <i data-lucide="copy" aria-hidden="true"></i>Duplicate
+        </button>
+        <button type="button" role="menuitem" data-note-context-action="move">
+          <i data-lucide="folder-input" aria-hidden="true"></i>Move to folder
+        </button>
+        <button type="button" role="menuitem" data-note-context-action="export">
+          <i data-lucide="download" aria-hidden="true"></i>Export Markdown
+        </button>
+        <div class="context-menu-separator" role="separator"></div>
+        <button class="is-danger" type="button" role="menuitem" data-note-context-action="delete">
+          <i data-lucide="trash-2" aria-hidden="true"></i>Delete note
+        </button>`;
+    }
+
+    menu.innerHTML = content;
+    menu.classList.remove("hidden");
+    if (
+      typeof menu.showPopover === "function" &&
+      !menu.matches(":popover-open")
+    ) {
+      menu.showPopover();
+    }
+    menu.querySelectorAll("[data-note-context-action]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const action = button.dataset.noteContextAction;
+        if (action === "back") {
+          state.noteContextMode = "actions";
+          renderNoteContextMenu();
+          return;
+        }
+        if (action === "open") {
+          closeNoteContextMenu();
+          selectNote(note.id);
+        }
+        if (action === "pin") {
+          togglePin(note.id);
+          closeNoteContextMenu();
+        }
+        if (action === "duplicate") duplicateNote(note.id);
+        if (action === "move") {
+          state.noteContextMode = "move";
+          renderNoteContextMenu();
+        }
+        if (action === "export") {
+          exportNote(note.id);
+          closeNoteContextMenu();
+        }
+        if (action === "delete") {
+          closeNoteContextMenu();
+          openDeleteNoteDialog(note.id);
+        }
+      });
+    });
+    menu.querySelectorAll("[data-note-folder]").forEach((button) => {
+      button.addEventListener("click", () => {
+        moveNoteToFolder(note.id, button.dataset.noteFolder);
+        closeNoteContextMenu();
+      });
+    });
+    requestAnimationFrame(() => {
+      const margin = 8;
+      const rect = menu.getBoundingClientRect();
+      menu.style.left = `${Math.max(
+        margin,
+        Math.min(state.noteContextX, window.innerWidth - rect.width - margin),
+      )}px`;
+      menu.style.top = `${Math.max(
+        margin,
+        Math.min(state.noteContextY, window.innerHeight - rect.height - margin),
+      )}px`;
+    });
+    lucide.createIcons();
+  }
+
+  function exportNote(noteId = state.activeId) {
+    if (noteId === state.activeId) saveActiveNow();
+    const note = state.notes.find((item) => item.id === noteId);
     if (!note) return;
     const blob = new Blob([note.content], { type: "text/markdown;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -1434,6 +1626,10 @@
     link.click();
     URL.revokeObjectURL(url);
     toast("Markdown exported");
+  }
+
+  function exportActiveNote() {
+    exportNote(state.activeId);
   }
 
   function safeFilename(name) {
@@ -1582,6 +1778,11 @@
   document.querySelectorAll("[data-view]").forEach((button) => {
     button.addEventListener("click", () => setView(button.dataset.view));
   });
+  document.querySelectorAll("[data-note-density-option]").forEach((button) => {
+    button.addEventListener("click", () =>
+      setNoteDensity(button.dataset.noteDensityOption),
+    );
+  });
 
   document
     .querySelectorAll("#new-note-button-header, #new-note-button-empty")
@@ -1589,9 +1790,12 @@
 
   el.sidebarToggle.addEventListener("click", toggleSidebar);
   el.backdrop.addEventListener("click", closeMobileMenu);
-  el.pin.addEventListener("click", togglePin);
-  el.remove.addEventListener("click", openDeleteNoteDialog);
+  el.pin.addEventListener("click", () => togglePin());
+  el.remove.addEventListener("click", () => openDeleteNoteDialog());
   el.confirmDeleteNote.addEventListener("click", deleteActiveNote);
+  el.deleteNoteDialog.addEventListener("close", () => {
+    state.pendingDeleteNoteId = null;
+  });
   document.querySelector("#export-button").addEventListener("click", exportActiveNote);
   document
     .querySelector("#shortcuts-button")
@@ -1640,6 +1844,9 @@
     if (event.key === "Escape" && !el.folderContextMenu.classList.contains("hidden")) {
       closeFolderContextMenu();
     }
+    if (event.key === "Escape" && !el.noteContextMenu.classList.contains("hidden")) {
+      closeNoteContextMenu();
+    }
     const modifier = event.metaKey || event.ctrlKey;
     if (modifier && event.key.toLowerCase() === "k") {
       event.preventDefault();
@@ -1666,6 +1873,12 @@
     ) {
       closeFolderContextMenu();
     }
+    if (
+      !el.noteContextMenu.classList.contains("hidden") &&
+      !el.noteContextMenu.contains(event.target)
+    ) {
+      closeNoteContextMenu();
+    }
   });
 
   el.editorPanel.addEventListener("click", (event) => {
@@ -1682,6 +1895,7 @@
   window.addEventListener("beforeunload", saveActiveNow);
   window.addEventListener("resize", () => {
     closeFolderContextMenu();
+    closeNoteContextMenu();
     if (window.innerWidth > 820) {
       el.navigation.classList.remove("is-open");
       el.backdrop.classList.add("hidden");
@@ -1689,6 +1903,11 @@
     syncSidebar();
   });
   window.addEventListener("storage", (event) => {
+    if (event.key === NOTE_DENSITY_KEY) {
+      state.noteDensity = event.newValue === "compact" ? "compact" : "comfortable";
+      syncNoteDensity();
+      return;
+    }
     if (![STORAGE_KEY, FOLDERS_KEY].includes(event.key)) return;
     state.notes = loadNotes();
     state.folders = loadFolders();
