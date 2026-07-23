@@ -34,9 +34,9 @@
     { value: "#747b81", name: "Gray" },
   ];
   const defaultFolders = [
-    { id: "folder-inbox", name: "Inbox", color: "#e7644b" },
-    { id: "folder-work", name: "Work", color: "#4f7596" },
-    { id: "folder-personal", name: "Personal", color: "#629167" },
+    { id: "folder-inbox", name: "Inbox", color: "#e7644b", parentId: null },
+    { id: "folder-work", name: "Work", color: "#4f7596", parentId: null },
+    { id: "folder-personal", name: "Personal", color: "#629167", parentId: null },
   ];
 
   const state = {
@@ -56,6 +56,10 @@
     colorPickerFolderId: null,
     renamingFolderId: null,
     deletingFolderId: null,
+    contextFolderId: null,
+    contextMenuMode: "actions",
+    contextMenuX: 0,
+    contextMenuY: 0,
     saveTimer: null,
     lastEscapeAt: 0,
   };
@@ -96,6 +100,7 @@
     folderForm: document.querySelector("#folder-form"),
     folderInput: document.querySelector("#folder-input"),
     editableFolders: document.querySelector("#editable-folders"),
+    folderContextMenu: document.querySelector("#folder-context-menu"),
     deleteNoteDialog: document.querySelector("#delete-note-dialog"),
     deleteNoteName: document.querySelector("#delete-note-name"),
     confirmDeleteNote: document.querySelector("#confirm-delete-note"),
@@ -162,12 +167,37 @@
               color: isFolderColor(folder.color)
                 ? folder.color
                 : folderColors[index % folderColors.length].value,
+              parentId: typeof folder.parentId === "string" ? folder.parentId : null,
             }))
         : [];
-      return valid.length ? valid : defaultFolders.map((folder) => ({ ...folder }));
+      return valid.length
+        ? normalizeFolderHierarchy(valid)
+        : defaultFolders.map((folder) => ({ ...folder }));
     } catch {
       return defaultFolders.map((folder) => ({ ...folder }));
     }
+  }
+
+  function normalizeFolderHierarchy(folders) {
+    const ids = new Set(folders.map((folder) => folder.id));
+    const byId = new Map(folders.map((folder) => [folder.id, folder]));
+    folders.forEach((folder) => {
+      if (!folder.parentId || !ids.has(folder.parentId) || folder.parentId === folder.id) {
+        folder.parentId = null;
+        return;
+      }
+      const visited = new Set([folder.id]);
+      let currentId = folder.parentId;
+      while (currentId) {
+        if (visited.has(currentId)) {
+          folder.parentId = null;
+          break;
+        }
+        visited.add(currentId);
+        currentId = byId.get(currentId)?.parentId || null;
+      }
+    });
+    return folders;
   }
 
   function migrateLegacyFolders() {
@@ -197,6 +227,7 @@
             id: crypto.randomUUID(),
             name: legacyName,
             color: folderColors[state.folders.length % folderColors.length].value,
+            parentId: null,
           };
           state.folders.push(folder);
         }
@@ -396,9 +427,12 @@
 
   function filteredNotes() {
     const query = state.query.trim().toLocaleLowerCase("en-US");
+    const visibleFolderIds = state.folderFilter
+      ? getFolderTreeIds(state.folderFilter)
+      : null;
     const list = state.notes.filter((note) => {
       const matchesType = state.filter === "all" || note.pinned;
-      const matchesFolder = !state.folderFilter || note.folderId === state.folderFilter;
+      const matchesFolder = !visibleFolderIds || visibleFolderIds.has(note.folderId);
       const folderName = getFolder(note.folderId)?.name || "";
       const haystack = `${note.title} ${note.content} ${folderName}`.toLocaleLowerCase("en-US");
       return matchesType && matchesFolder && (!query || haystack.includes(query));
@@ -535,16 +569,23 @@
     });
 
     el.folderList.replaceChildren(
-      ...state.folders
-        .map((folder) => ({
+      ...flattenedFolders()
+        .map(({ folder, depth }) => ({
           ...folder,
-          count: state.notes.filter((note) => note.folderId === folder.id).length,
+          depth,
+          count: folderTreeNoteCount(folder.id),
         }))
         .map((folder) => {
           const button = document.createElement("button");
           button.type = "button";
-          button.className = `nav-item${state.folderFilter === folder.id ? " is-active" : ""}`;
+          button.className = `nav-item folder-nav-item${
+            state.folderFilter === folder.id ? " is-active" : ""
+          }`;
           button.style.setProperty("--folder-color", folder.color);
+          button.style.setProperty("--folder-depth", folder.depth);
+          button.style.setProperty("--folder-indent", `${folder.depth * 16}px`);
+          button.dataset.folderId = folder.id;
+          button.dataset.depth = folder.depth;
           button.setAttribute(
             "aria-label",
             `${folder.name}, ${folder.count} ${
@@ -564,6 +605,11 @@
             renderNoteList();
             closeMobileMenu();
             lucide.createIcons();
+          });
+          button.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            openFolderContextMenu(folder.id, event.clientX, event.clientY);
           });
           button.addEventListener("dragenter", (event) => {
             if (!state.draggedNoteId) return;
@@ -668,6 +714,44 @@
     return state.folders.find((folder) => folder.id === folderId) || null;
   }
 
+  function getFolderTreeIds(folderId) {
+    const ids = new Set();
+    const visit = (id) => {
+      if (ids.has(id)) return;
+      ids.add(id);
+      state.folders
+        .filter((folder) => folder.parentId === id)
+        .forEach((folder) => visit(folder.id));
+    };
+    visit(folderId);
+    return ids;
+  }
+
+  function flattenedFolders() {
+    const rows = [];
+    const visited = new Set();
+    const visit = (parentId, depth) => {
+      state.folders
+        .filter((folder) => folder.parentId === parentId)
+        .forEach((folder) => {
+          if (visited.has(folder.id)) return;
+          visited.add(folder.id);
+          rows.push({ folder, depth });
+          visit(folder.id, depth + 1);
+        });
+    };
+    visit(null, 0);
+    state.folders.forEach((folder) => {
+      if (!visited.has(folder.id)) rows.push({ folder, depth: 0 });
+    });
+    return rows;
+  }
+
+  function folderTreeNoteCount(folderId) {
+    const ids = getFolderTreeIds(folderId);
+    return state.notes.filter((note) => ids.has(note.folderId)).length;
+  }
+
   function renderFolderChip(note) {
     const folder = getFolder(note.folderId);
     const button = document.createElement("button");
@@ -720,11 +804,23 @@
   function renderEditableFolders() {
     const note = getActiveNote();
     el.editableFolders.replaceChildren(
-      ...state.folders.map((folder) => {
-        const count = state.notes.filter((item) => item.folderId === folder.id).length;
+      ...flattenedFolders().map(({ folder, depth }) => {
+        const count = folderTreeNoteCount(folder.id);
         const row = document.createElement("div");
         row.className = `folder-manager-row${note?.folderId === folder.id ? " is-current" : ""}`;
         row.style.setProperty("--folder-color", folder.color);
+        row.style.setProperty("--folder-depth", depth);
+        row.style.setProperty("--folder-indent", `${depth * 13}px`);
+        row.dataset.depth = depth;
+        row.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          openFolderContextMenu(
+            folder.id,
+            event.clientX,
+            event.clientY,
+            el.folderDialog,
+          );
+        });
         const palette = folderColors
           .map(
             (color) => `
@@ -740,6 +836,7 @@
           .join("");
         row.innerHTML = `
           <button class="folder-select" type="button" ${note ? "" : "disabled"}>
+            <span class="folder-manager-indent" aria-hidden="true"></span>
             <i data-lucide="${note?.folderId === folder.id ? "folder-check" : "folder"}" aria-hidden="true"></i>
             <span class="min-w-0 flex-1 truncate text-left">${escapeHtml(folder.name)}</span>
             <span class="folder-count">${count}</span>
@@ -772,10 +869,8 @@
               ? `<div class="folder-delete-confirm">
                   <p>${
                     count
-                      ? `${count} ${count === 1 ? "note" : "notes"} will move to “${escapeHtml(
-                          state.folders.find((item) => item.id !== folder.id)?.name || "",
-                        )}”.`
-                      : "This folder is empty."
+                      ? `${count} ${count === 1 ? "note" : "notes"} in this folder tree will be moved safely.`
+                      : "This folder tree is empty."
                   }</p>
                   <button class="secondary-button cancel-folder-action" type="button">Cancel</button>
                   <button class="destructive-button confirm-folder-delete" type="button">Delete</button>
@@ -809,8 +904,8 @@
           }
         });
         row.querySelector(".delete-folder").addEventListener("click", () => {
-          if (state.folders.length === 1) {
-            toast("The last folder cannot be deleted");
+          if (getFolderTreeIds(folder.id).size === state.folders.length) {
+            toast("The last folder tree cannot be deleted");
             return;
           }
           state.deletingFolderId = folder.id;
@@ -843,25 +938,31 @@
     lucide.createIcons();
   }
 
-  function addFolder(value) {
+  function addFolder(value, parentId = null, moveActiveNote = true) {
     const name = value.trim();
-    if (!name) return;
+    if (!name) return null;
+    const parent = parentId ? getFolder(parentId) : null;
     if (
       state.folders.some(
-        (folder) => folder.name.toLocaleLowerCase("en-US") === name.toLocaleLowerCase("en-US"),
+        (folder) =>
+          folder.parentId === (parent?.id || null) &&
+          folder.name.toLocaleLowerCase("en-US") === name.toLocaleLowerCase("en-US"),
       )
     ) {
-      toast("A folder with that name already exists");
-      return;
+      toast("A folder with that name already exists here");
+      return null;
     }
     const folder = {
       id: crypto.randomUUID(),
       name,
-      color: folderColors[state.folders.length % folderColors.length].value,
+      color:
+        parent?.color ||
+        folderColors[state.folders.length % folderColors.length].value,
+      parentId: parent?.id || null,
     };
     state.folders.push(folder);
     const note = getActiveNote();
-    if (note) {
+    if (note && moveActiveNote) {
       note.folderId = folder.id;
       note.updatedAt = Date.now();
       if (state.folderFilter) state.folderFilter = folder.id;
@@ -872,6 +973,7 @@
     if (note) renderFolderChip(note);
     renderEditableFolders();
     toast(`Created “${name}”`);
+    return folder;
   }
 
   function moveActiveToFolder(folderId) {
@@ -922,10 +1024,11 @@
       state.folders.some(
         (item) =>
           item.id !== folder.id &&
+          item.parentId === folder.parentId &&
           item.name.toLocaleLowerCase("en-US") === name.toLocaleLowerCase("en-US"),
       )
     ) {
-      toast("A folder with that name already exists");
+      toast("A folder with that name already exists here");
       return;
     }
     folder.name = name;
@@ -942,25 +1045,289 @@
   function deleteFolder(folderId) {
     const folder = getFolder(folderId);
     if (!folder) return;
-    if (state.folders.length === 1) {
-      toast("The last folder cannot be deleted");
+    const treeIds = getFolderTreeIds(folderId);
+    if (treeIds.size === state.folders.length) {
+      toast("The last folder tree cannot be deleted");
       return;
     }
-    const fallback = state.folders.find((item) => item.id !== folderId);
+    const fallback =
+      state.folders.find((item) => item.id === folder.parentId && !treeIds.has(item.id)) ||
+      state.folders.find((item) => !treeIds.has(item.id));
     state.notes.forEach((note) => {
-      if (note.folderId === folderId) note.folderId = fallback.id;
+      if (treeIds.has(note.folderId)) note.folderId = fallback.id;
     });
-    state.folders = state.folders.filter((item) => item.id !== folderId);
-    if (state.colorPickerFolderId === folderId) state.colorPickerFolderId = null;
+    state.folders = state.folders.filter((item) => !treeIds.has(item.id));
+    if (treeIds.has(state.colorPickerFolderId)) state.colorPickerFolderId = null;
+    if (treeIds.has(state.renamingFolderId)) state.renamingFolderId = null;
     state.deletingFolderId = null;
-    if (state.folderFilter === folderId) state.folderFilter = null;
+    if (treeIds.has(state.folderFilter)) state.folderFilter = fallback.id;
     persist();
     renderNavigation();
     renderNoteList();
     const note = getActiveNote();
     if (note) renderFolderChip(note);
     renderEditableFolders();
-    toast("Folder deleted");
+    closeFolderContextMenu();
+    toast(`Deleted “${folder.name}” and its subfolders`);
+  }
+
+  function uniqueFolderName(baseName, parentId) {
+    const existing = new Set(
+      state.folders
+        .filter((folder) => folder.parentId === parentId)
+        .map((folder) => folder.name.toLocaleLowerCase("en-US")),
+    );
+    if (!existing.has(baseName.toLocaleLowerCase("en-US"))) return baseName;
+    let suffix = 2;
+    while (existing.has(`${baseName} ${suffix}`.toLocaleLowerCase("en-US"))) suffix += 1;
+    return `${baseName} ${suffix}`;
+  }
+
+  function duplicateFolderTree(folderId) {
+    const source = getFolder(folderId);
+    if (!source) return;
+    saveActiveNow();
+    const treeIds = getFolderTreeIds(folderId);
+    const idMap = new Map();
+    const clones = [];
+    flattenedFolders()
+      .map(({ folder }) => folder)
+      .filter((folder) => treeIds.has(folder.id))
+      .forEach((folder) => {
+        const id = crypto.randomUUID();
+        idMap.set(folder.id, id);
+        clones.push({
+          id,
+          name:
+            folder.id === source.id
+              ? uniqueFolderName(`${source.name} copy`, source.parentId)
+              : folder.name,
+          color: folder.color,
+          parentId:
+            folder.id === source.id
+              ? source.parentId
+              : idMap.get(folder.parentId) || source.parentId,
+        });
+      });
+    state.folders.push(...clones);
+    const now = Date.now();
+    const noteClones = state.notes
+      .filter((note) => treeIds.has(note.folderId))
+      .map((note, index) => ({
+        ...note,
+        id: crypto.randomUUID(),
+        folderId: idMap.get(note.folderId),
+        createdAt: now + index,
+        updatedAt: now + index,
+      }));
+    state.notes.unshift(...noteClones);
+    persist();
+    renderNavigation();
+    renderNoteList();
+    renderEditableFolders();
+    closeFolderContextMenu();
+    toast(
+      `Duplicated “${source.name}”${
+        noteClones.length
+          ? ` with ${noteClones.length} ${noteClones.length === 1 ? "note" : "notes"}`
+          : ""
+      }`,
+    );
+  }
+
+  function openFolderContextMenu(folderId, x, y, host = document.body) {
+    closeFolderContextMenu();
+    host.append(el.folderContextMenu);
+    state.contextFolderId = folderId;
+    state.contextMenuMode = "actions";
+    state.contextMenuX = x;
+    state.contextMenuY = y;
+    renderFolderContextMenu();
+  }
+
+  function closeFolderContextMenu() {
+    state.contextFolderId = null;
+    state.contextMenuMode = "actions";
+    if (
+      typeof el.folderContextMenu.hidePopover === "function" &&
+      el.folderContextMenu.matches(":popover-open")
+    ) {
+      el.folderContextMenu.hidePopover();
+    }
+    el.folderContextMenu.classList.add("hidden");
+    el.folderContextMenu.replaceChildren();
+  }
+
+  function renderFolderContextMenu() {
+    const folder = getFolder(state.contextFolderId);
+    const menu = el.folderContextMenu;
+    const palette = folderColors
+      .map(
+        (color) => `
+          <button
+            class="folder-color-swatch${folder?.color === color.value ? " is-selected" : ""}"
+            type="button"
+            data-context-color="${color.value}"
+            style="--swatch:${color.value}"
+            aria-label="${color.name}"
+            title="${color.name}"
+          ></button>`,
+      )
+      .join("");
+
+    let content = "";
+    if (state.contextMenuMode === "create") {
+      content = `
+        <form class="context-inline-form" data-context-form="create">
+          <label>${folder ? `New subfolder in “${escapeHtml(folder.name)}”` : "New folder"}</label>
+          <input class="text-input" maxlength="32" placeholder="Folder name" autocomplete="off" />
+          <div class="context-form-actions">
+            <button class="secondary-button" type="button" data-context-action="back">Cancel</button>
+            <button class="primary-button" type="submit">Create</button>
+          </div>
+        </form>`;
+    } else if (state.contextMenuMode === "rename" && folder) {
+      content = `
+        <form class="context-inline-form" data-context-form="rename">
+          <label>Rename “${escapeHtml(folder.name)}”</label>
+          <input class="text-input" maxlength="32" autocomplete="off" />
+          <div class="context-form-actions">
+            <button class="secondary-button" type="button" data-context-action="back">Cancel</button>
+            <button class="primary-button" type="submit">Save</button>
+          </div>
+        </form>`;
+    } else if (state.contextMenuMode === "color" && folder) {
+      content = `
+        <div class="context-menu-panel">
+          <div class="context-panel-heading">
+            <button type="button" data-context-action="back" aria-label="Back"><i data-lucide="arrow-left"></i></button>
+            <strong>Change color</strong>
+          </div>
+          <div class="context-color-grid" role="group" aria-label="${escapeHtml(folder.name)} color palette">${palette}</div>
+        </div>`;
+    } else if (state.contextMenuMode === "delete" && folder) {
+      const treeSize = getFolderTreeIds(folder.id).size;
+      const noteCount = folderTreeNoteCount(folder.id);
+      content = `
+        <div class="context-menu-panel">
+          <strong>Delete “${escapeHtml(folder.name)}”?</strong>
+          <p>${treeSize > 1 ? `${treeSize - 1} subfolders and ` : ""}${noteCount} ${
+            noteCount === 1 ? "note" : "notes"
+          } are included. Notes will move to a safe folder.</p>
+          <div class="context-form-actions">
+            <button class="secondary-button" type="button" data-context-action="back">Cancel</button>
+            <button class="destructive-button" type="button" data-context-action="confirm-delete">Delete</button>
+          </div>
+        </div>`;
+    } else {
+      content = `
+        <div class="context-menu-heading">
+          <i data-lucide="${folder ? "folder" : "folders"}" aria-hidden="true"></i>
+          <span>${folder ? escapeHtml(folder.name) : "Folders"}</span>
+        </div>
+        <button type="button" role="menuitem" data-context-action="create">
+          <i data-lucide="folder-plus" aria-hidden="true"></i>
+          ${folder ? "New subfolder" : "New folder"}
+        </button>
+        ${
+          folder
+            ? `
+              <button type="button" role="menuitem" data-context-action="rename">
+                <i data-lucide="pencil" aria-hidden="true"></i>Rename
+              </button>
+              <button type="button" role="menuitem" data-context-action="color">
+                <i data-lucide="palette" aria-hidden="true"></i>Change color
+              </button>
+              <button type="button" role="menuitem" data-context-action="duplicate">
+                <i data-lucide="copy" aria-hidden="true"></i>Duplicate
+              </button>
+              <div class="context-menu-separator" role="separator"></div>
+              <button class="is-danger" type="button" role="menuitem" data-context-action="delete">
+                <i data-lucide="trash-2" aria-hidden="true"></i>Delete folder tree
+              </button>`
+            : ""
+        }`;
+    }
+
+    menu.innerHTML = content;
+    menu.classList.remove("hidden");
+    if (
+      typeof menu.showPopover === "function" &&
+      !menu.matches(":popover-open")
+    ) {
+      menu.showPopover();
+    }
+    menu.querySelectorAll("[data-context-action]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const action = button.dataset.contextAction;
+        if (action === "back") state.contextMenuMode = "actions";
+        if (
+          action === "delete" &&
+          folder &&
+          getFolderTreeIds(folder.id).size === state.folders.length
+        ) {
+          toast("The last folder tree cannot be deleted");
+          closeFolderContextMenu();
+          return;
+        }
+        if (["create", "rename", "color", "delete"].includes(action)) {
+          state.contextMenuMode = action;
+        }
+        if (action === "duplicate" && folder) {
+          duplicateFolderTree(folder.id);
+          return;
+        }
+        if (action === "confirm-delete" && folder) {
+          deleteFolder(folder.id);
+          return;
+        }
+        renderFolderContextMenu();
+      });
+    });
+    menu.querySelectorAll("[data-context-color]").forEach((swatch) => {
+      swatch.addEventListener("click", () => {
+        updateFolderColor(folder.id, swatch.dataset.contextColor);
+        closeFolderContextMenu();
+      });
+    });
+    const createForm = menu.querySelector('[data-context-form="create"]');
+    if (createForm) {
+      const input = createForm.querySelector("input");
+      createForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const created = addFolder(input.value, folder?.id || null, false);
+        if (created) closeFolderContextMenu();
+      });
+      setTimeout(() => input.focus(), 0);
+    }
+    const renameForm = menu.querySelector('[data-context-form="rename"]');
+    if (renameForm && folder) {
+      const input = renameForm.querySelector("input");
+      input.value = folder.name;
+      renameForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const previousName = folder.name;
+        renameFolder(folder.id, input.value);
+        if (folder.name !== previousName) closeFolderContextMenu();
+      });
+      setTimeout(() => {
+        input.focus();
+        input.select();
+      }, 0);
+    }
+    requestAnimationFrame(() => {
+      const margin = 8;
+      const rect = menu.getBoundingClientRect();
+      menu.style.left = `${Math.max(
+        margin,
+        Math.min(state.contextMenuX, window.innerWidth - rect.width - margin),
+      )}px`;
+      menu.style.top = `${Math.max(
+        margin,
+        Math.min(state.contextMenuY, window.innerHeight - rect.height - margin),
+      )}px`;
+    });
+    lucide.createIcons();
   }
 
   function exportActiveNote() {
@@ -1151,6 +1518,16 @@
     el.themeDialog.showModal();
   });
   document.querySelector("#manage-folders-button").addEventListener("click", openFolderDialog);
+  el.folderList.addEventListener("contextmenu", (event) => {
+    if (event.target.closest("[data-folder-id]")) return;
+    event.preventDefault();
+    openFolderContextMenu(null, event.clientX, event.clientY);
+  });
+  el.editableFolders.addEventListener("contextmenu", (event) => {
+    if (event.target.closest(".folder-manager-row")) return;
+    event.preventDefault();
+    openFolderContextMenu(null, event.clientX, event.clientY, el.folderDialog);
+  });
 
   document.querySelectorAll("[data-close-dialog]").forEach((button) => {
     button.addEventListener("click", () => button.closest("dialog").close());
@@ -1177,6 +1554,9 @@
   });
 
   document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && !el.folderContextMenu.classList.contains("hidden")) {
+      closeFolderContextMenu();
+    }
     const modifier = event.metaKey || event.ctrlKey;
     if (modifier && event.key.toLowerCase() === "k") {
       event.preventDefault();
@@ -1196,6 +1576,14 @@
       setView(state.view === "edit" ? "preview" : "edit");
     }
   });
+  document.addEventListener("pointerdown", (event) => {
+    if (
+      !el.folderContextMenu.classList.contains("hidden") &&
+      !el.folderContextMenu.contains(event.target)
+    ) {
+      closeFolderContextMenu();
+    }
+  });
 
   el.editorPanel.addEventListener("click", (event) => {
     if (
@@ -1210,6 +1598,7 @@
 
   window.addEventListener("beforeunload", saveActiveNow);
   window.addEventListener("resize", () => {
+    closeFolderContextMenu();
     if (window.innerWidth > 820) {
       el.navigation.classList.remove("is-open");
       el.backdrop.classList.add("hidden");
