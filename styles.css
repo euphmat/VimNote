@@ -995,31 +995,10 @@ input:focus-visible,
   color: var(--coral);
 }
 
-.title-wrap {
-  padding: 32px 46px 15px;
-}
-
-.note-title {
-  width: 100%;
-  border: 0;
-  outline: 0 !important;
-  background: transparent;
-  color: var(--ink);
-  font-family: var(--font-sarasa);
-  font-size: clamp(27px, 3vw, 40px);
-  font-weight: 600;
-  letter-spacing: -0.035em;
-  line-height: 1.15;
-}
-
-.note-title::placeholder {
-  color: var(--subtle);
-}
-
 .editor-wrap {
   min-height: 0;
   flex: 1;
-  padding: 0 26px 12px;
+  padding: 30px 26px 12px;
 }
 
 .CodeMirror {
@@ -1863,11 +1842,6 @@ input:focus-visible,
     grid-template-columns: 210px 300px minmax(390px, 1fr);
   }
 
-  .title-wrap {
-    padding-right: 32px;
-    padding-left: 32px;
-  }
-
   .markdown-preview {
     padding-right: 34px;
     padding-left: 34px;
@@ -1967,12 +1941,8 @@ input:focus-visible,
     padding: 8px 10px 8px 48px;
   }
 
-  .title-wrap {
-    padding: 25px 22px 12px;
-  }
-
   .editor-wrap {
-    padding: 0 12px 8px;
+    padding: 25px 12px 8px;
   }
 
   .markdown-preview {

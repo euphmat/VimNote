@@ -69,7 +69,6 @@
     emptyList: document.querySelector("#empty-list"),
     emptyEditor: document.querySelector("#empty-editor"),
     editorShell: document.querySelector("#editor-shell"),
-    title: document.querySelector("#note-title"),
     updatedAt: document.querySelector("#updated-at"),
     folderChip: document.querySelector("#folder-chip"),
     folderList: document.querySelector("#folder-list"),
@@ -110,6 +109,7 @@
   };
 
   removeLegacyStarterNotes();
+  migrateNoteTitles();
   migrateLegacyFolders();
   if (!state.notes.some((note) => note.id === state.activeId)) {
     state.activeId = state.notes[0]?.id ?? null;
@@ -282,6 +282,33 @@
     if (state.notes.length !== previousLength) persist();
   }
 
+  function migrateNoteTitles() {
+    let changed = false;
+    state.notes.forEach((note) => {
+      const originalContent = typeof note.content === "string" ? note.content : "";
+      let content = originalContent;
+      if (!hasFirstLineH1(content)) {
+        const legacyTitle = note.title?.trim() || firstMeaningfulLine(content);
+        if (legacyTitle) {
+          const lines = content.split("\n");
+          if (lines[0]?.trim() === legacyTitle) {
+            lines[0] = `# ${legacyTitle}`;
+            content = lines.join("\n");
+          } else {
+            content = `# ${legacyTitle}${content ? `\n\n${content}` : "\n"}`;
+          }
+        }
+      }
+      const title = firstLineH1Title(content);
+      if (note.content !== content || note.title !== title) {
+        note.content = content;
+        note.title = title;
+        changed = true;
+      }
+    });
+    if (changed) persist();
+  }
+
   function persist() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.notes));
@@ -320,8 +347,8 @@
   function saveActiveNow() {
     const note = getActiveNote();
     if (!note || editor._loadingNote) return;
-    note.title = el.title.value.trimStart();
     note.content = editor.getValue();
+    note.title = firstLineH1Title(note.content);
     note.updatedAt = Date.now();
     persist();
     renderNoteList();
@@ -340,7 +367,7 @@
     const note = {
       id: crypto.randomUUID(),
       title: "",
-      content: "",
+      content: "# ",
       folderId: state.folderFilter || state.folders[0].id,
       pinned: false,
       createdAt: now,
@@ -353,8 +380,9 @@
     render();
     openEditorOnMobile();
     setTimeout(() => {
-      el.title.focus();
-      el.title.select();
+      editor.setCursor({ line: 0, ch: 2 });
+      editor.focus();
+      if (!editor.state.vim?.insertMode) CodeMirror.Vim.handleKey(editor, "i");
     }, 0);
     toast("New note created");
   }
@@ -403,7 +431,18 @@
   }
 
   function displayTitle(note) {
-    return note.title?.trim() || firstMeaningfulLine(note.content) || "Untitled note";
+    return firstLineH1Title(note.content) || "Untitled note";
+  }
+
+  function hasFirstLineH1(content) {
+    const firstLine = String(content || "").split(/\r?\n/, 1)[0].replace(/^\uFEFF/, "");
+    return /^#(?:[ \t]+.*)?$/.test(firstLine);
+  }
+
+  function firstLineH1Title(content) {
+    const firstLine = String(content || "").split(/\r?\n/, 1)[0].replace(/^\uFEFF/, "");
+    const match = firstLine.match(/^#[ \t]+(.*)$/);
+    return match ? match[1].trim() : "";
   }
 
   function firstMeaningfulLine(content) {
@@ -418,6 +457,7 @@
   function plainExcerpt(content) {
     return (
       content
+        .replace(/^#[ \t]+.*(?:\r?\n|$)/, "")
         .replace(/```[\s\S]*?```/g, " code ")
         .replace(/[#>*_`[\]()!-]/g, " ")
         .replace(/\s+/g, " ")
@@ -434,7 +474,9 @@
       const matchesType = state.filter === "all" || note.pinned;
       const matchesFolder = !visibleFolderIds || visibleFolderIds.has(note.folderId);
       const folderName = getFolder(note.folderId)?.name || "";
-      const haystack = `${note.title} ${note.content} ${folderName}`.toLocaleLowerCase("en-US");
+      const haystack = `${displayTitle(note)} ${note.content} ${folderName}`.toLocaleLowerCase(
+        "en-US",
+      );
       return matchesType && matchesFolder && (!query || haystack.includes(query));
     });
     return list.sort((a, b) => {
@@ -691,7 +733,6 @@
     if (!note) return;
 
     editor._loadingNote = true;
-    el.title.value = note.title || "";
     editor.setValue(note.content || "");
     editor.clearHistory();
     editor.setCursor({ line: 0, ch: 0 });
@@ -1477,15 +1518,6 @@
     }
   });
 
-  el.title.addEventListener("input", scheduleSave);
-  el.title.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      editor.focus();
-      CodeMirror.Vim.handleKey(editor, "i");
-    }
-  });
-
   document.querySelectorAll("[data-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       state.filter = button.dataset.filter;
@@ -1609,6 +1641,7 @@
     if (![STORAGE_KEY, FOLDERS_KEY].includes(event.key)) return;
     state.notes = loadNotes();
     state.folders = loadFolders();
+    migrateNoteTitles();
     migrateLegacyFolders();
     render();
     toast("Changes from another tab were applied");
