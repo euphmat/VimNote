@@ -1572,6 +1572,39 @@ input:focus-visible,
   box-shadow: 0 0 0 2px var(--ink);
 }
 
+.folder-rename-form,
+.folder-delete-confirm {
+  display: grid;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 8px 8px;
+  border-top: 1px solid var(--line);
+  grid-column: 1 / -1;
+}
+
+.folder-rename-form {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.folder-rename-form .primary-button,
+.folder-rename-form .secondary-button,
+.folder-delete-confirm .secondary-button,
+.folder-delete-confirm .destructive-button {
+  min-height: 34px;
+  padding: 0 11px;
+  font-size: 10px;
+}
+
+.folder-delete-confirm {
+  grid-template-columns: minmax(0, 1fr) auto auto;
+}
+
+.folder-delete-confirm p {
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.45;
+}
+
 .shortcut-grid {
   display: grid;
   margin-top: 24px;

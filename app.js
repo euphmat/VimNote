@@ -8,93 +8,35 @@
   const SIDEBAR_KEY = "vimnote.sidebar-collapsed.v1";
   const encoder = new TextEncoder();
   const themes = [
-    { id: "paper", name: "Paper", description: "やわらかな紙", colors: ["#f5f1e8", "#252421", "#e7644b"] },
-    { id: "midnight", name: "Midnight", description: "深夜のブルー", colors: ["#10141c", "#edf1f7", "#ff7a66"] },
-    { id: "charcoal", name: "Charcoal", description: "静かな墨色", colors: ["#171717", "#f1eee8", "#e78b61"] },
-    { id: "forest", name: "Forest", description: "深い森の緑", colors: ["#13201b", "#eef3e8", "#e3a65a"] },
-    { id: "ocean", name: "Ocean", description: "落ち着いた海", colors: ["#0e1c24", "#e9f3f5", "#6dc5d6"] },
-    { id: "plum", name: "Plum", description: "夜の紫", colors: ["#211725", "#f4edf3", "#d987b8"] },
-    { id: "sepia", name: "Sepia", description: "古いノート", colors: ["#eee3cf", "#392e23", "#a75638"] },
-    { id: "slate", name: "Slate", description: "端正な青灰", colors: ["#e8edf0", "#253039", "#4f7596"] },
-    { id: "sakura", name: "Sakura", description: "淡い桜色", colors: ["#f8ecef", "#382b31", "#c95078"] },
-    { id: "solarized", name: "Solarized", description: "低コントラスト", colors: ["#fdf6e3", "#073642", "#cb4b16"] },
+    { id: "paper", name: "Paper", description: "Soft and warm", colors: ["#f5f1e8", "#252421", "#e7644b"] },
+    { id: "midnight", name: "Midnight", description: "Deep night blue", colors: ["#10141c", "#edf1f7", "#ff7a66"] },
+    { id: "charcoal", name: "Charcoal", description: "Quiet graphite", colors: ["#171717", "#f1eee8", "#e78b61"] },
+    { id: "forest", name: "Forest", description: "Deep woodland", colors: ["#13201b", "#eef3e8", "#e3a65a"] },
+    { id: "ocean", name: "Ocean", description: "Calm blue water", colors: ["#0e1c24", "#e9f3f5", "#6dc5d6"] },
+    { id: "plum", name: "Plum", description: "Dark violet", colors: ["#211725", "#f4edf3", "#d987b8"] },
+    { id: "sepia", name: "Sepia", description: "Aged notebook", colors: ["#eee3cf", "#392e23", "#a75638"] },
+    { id: "slate", name: "Slate", description: "Clean blue gray", colors: ["#e8edf0", "#253039", "#4f7596"] },
+    { id: "sakura", name: "Sakura", description: "Soft cherry pink", colors: ["#f8ecef", "#382b31", "#c95078"] },
+    { id: "solarized", name: "Solarized", description: "Low contrast", colors: ["#fdf6e3", "#073642", "#cb4b16"] },
   ];
   const folderColors = [
-    { value: "#e7644b", name: "コーラル" },
-    { value: "#d98b3e", name: "オレンジ" },
-    { value: "#c5a332", name: "イエロー" },
-    { value: "#629167", name: "グリーン" },
-    { value: "#3e9183", name: "ティール" },
-    { value: "#3d91a8", name: "シアン" },
-    { value: "#4f7596", name: "ブルー" },
-    { value: "#626ca8", name: "インディゴ" },
-    { value: "#8765a6", name: "パープル" },
-    { value: "#c05f87", name: "ピンク" },
-    { value: "#906c52", name: "ブラウン" },
-    { value: "#747b81", name: "グレー" },
+    { value: "#e7644b", name: "Coral" },
+    { value: "#d98b3e", name: "Orange" },
+    { value: "#c5a332", name: "Yellow" },
+    { value: "#629167", name: "Green" },
+    { value: "#3e9183", name: "Teal" },
+    { value: "#3d91a8", name: "Cyan" },
+    { value: "#4f7596", name: "Blue" },
+    { value: "#626ca8", name: "Indigo" },
+    { value: "#8765a6", name: "Purple" },
+    { value: "#c05f87", name: "Pink" },
+    { value: "#906c52", name: "Brown" },
+    { value: "#747b81", name: "Gray" },
   ];
   const defaultFolders = [
-    { id: "folder-inbox", name: "受信トレイ", color: "#e7644b" },
-    { id: "folder-work", name: "仕事", color: "#4f7596" },
-    { id: "folder-personal", name: "個人", color: "#629167" },
-  ];
-
-  const starterNotes = [
-    {
-      id: crypto.randomUUID(),
-      title: "VimNote へようこそ",
-      content: `# VimNote へようこそ
-
-ここは、思考をすばやく書き留めるための **Markdown メモ** です。
-
-## Vim で編集する
-
-- \`i\` で挿入モード
-- \`jj\` または \`Esc\` でノーマルモード
-- \`/\` でインクリメンタル検索
-- \`Esc Esc\` で検索ハイライトを解除
-- \`:w\` で保存（自動保存も有効です）
-
-> データは外部へ送信されず、このブラウザの localStorage に保存されます。
-
-\`\`\`javascript
-const idea = "考えを、手元に。";
-localStorage.setItem("note", idea);
-\`\`\`
-`,
-      folderId: "folder-inbox",
-      pinned: true,
-      createdAt: Date.now() - 1000 * 60 * 58,
-      updatedAt: Date.now() - 1000 * 60 * 5,
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "今週のフォーカス",
-      content: `## 今週やること
-
-- [ ] プロトタイプを共有する
-- [ ] フィードバックを整理する
-- [ ] 次の小さな一歩を決める
-
-大きな目標を、今日できる単位まで小さくする。`,
-      folderId: "folder-work",
-      pinned: false,
-      createdAt: Date.now() - 1000 * 60 * 60 * 25,
-      updatedAt: Date.now() - 1000 * 60 * 60 * 3,
-    },
-    {
-      id: crypto.randomUUID(),
-      title: "読みたい本",
-      content: `# 読書リスト
-
-1. デザインについて
-2. 文章と思考について
-3. 小さな習慣について`,
-      folderId: "folder-personal",
-      pinned: false,
-      createdAt: Date.now() - 1000 * 60 * 60 * 24 * 4,
-      updatedAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
-    },
+    { id: "folder-inbox", name: "Inbox", color: "#e7644b" },
+    { id: "folder-work", name: "Work", color: "#4f7596" },
+    { id: "folder-personal", name: "Personal", color: "#629167" },
   ];
 
   const state = {
@@ -112,6 +54,8 @@ localStorage.setItem("note", idea);
       : "paper",
     draggedNoteId: null,
     colorPickerFolderId: null,
+    renamingFolderId: null,
+    deletingFolderId: null,
     saveTimer: null,
     lastEscapeAt: 0,
   };
@@ -160,11 +104,8 @@ localStorage.setItem("note", idea);
     toastRegion: document.querySelector("#toast-region"),
   };
 
+  removeLegacyStarterNotes();
   migrateLegacyFolders();
-  if (!state.notes.length) {
-    state.notes = starterNotes;
-    persist();
-  }
   if (!state.notes.some((note) => note.id === state.activeId)) {
     state.activeId = state.notes[0]?.id ?? null;
   }
@@ -196,7 +137,7 @@ localStorage.setItem("note", idea);
   CodeMirror.Vim.map("jj", "<Esc>", "insert");
   CodeMirror.Vim.defineEx("write", "w", () => {
     saveActiveNow();
-    toast("保存しました");
+    toast("Note saved");
   });
   CodeMirror.Vim.defineEx("nohlsearch", "noh", () => clearSearchHighlight());
 
@@ -231,9 +172,25 @@ localStorage.setItem("note", idea);
 
   function migrateLegacyFolders() {
     let changed = false;
+    const legacyDefaultNames = {
+      "folder-inbox": "\u53d7\u4fe1\u30c8\u30ec\u30a4",
+      "folder-work": "\u4ed5\u4e8b",
+      "folder-personal": "\u500b\u4eba",
+    };
+    const englishDefaultNames = {
+      "folder-inbox": "Inbox",
+      "folder-work": "Work",
+      "folder-personal": "Personal",
+    };
+    state.folders.forEach((folder) => {
+      if (folder.name === legacyDefaultNames[folder.id]) {
+        folder.name = englishDefaultNames[folder.id];
+        changed = true;
+      }
+    });
     state.notes.forEach((note) => {
       if (!note.folderId) {
-        const legacyName = note.tags?.[0]?.trim() || "受信トレイ";
+        const legacyName = note.tags?.[0]?.trim() || "Inbox";
         let folder = state.folders.find((item) => item.name === legacyName);
         if (!folder) {
           folder = {
@@ -258,6 +215,42 @@ localStorage.setItem("note", idea);
     if (changed) persist();
   }
 
+  function removeLegacyStarterNotes() {
+    const legacySamples = [
+      {
+        title: "VimNote \u3078\u3088\u3046\u3053\u305d",
+        phrases: [
+          "VimNote \u3078\u3088\u3046\u3053\u305d",
+          "Vim \u3067\u7de8\u96c6\u3059\u308b",
+        ],
+      },
+      {
+        title: "\u4eca\u9031\u306e\u30d5\u30a9\u30fc\u30ab\u30b9",
+        phrases: [
+          "\u4eca\u9031\u3084\u308b\u3053\u3068",
+          "\u5927\u304d\u306a\u76ee\u6a19\u3092\u3001\u4eca\u65e5\u3067\u304d\u308b\u5358\u4f4d\u307e\u3067\u5c0f\u3055\u304f\u3059\u308b\u3002",
+        ],
+      },
+      {
+        title: "\u8aad\u307f\u305f\u3044\u672c",
+        phrases: [
+          "\u8aad\u66f8\u30ea\u30b9\u30c8",
+          "\u5c0f\u3055\u306a\u7fd2\u6163\u306b\u3064\u3044\u3066",
+        ],
+      },
+    ];
+    const previousLength = state.notes.length;
+    state.notes = state.notes.filter(
+      (note) =>
+        !legacySamples.some(
+          (sample) =>
+            note.title === sample.title &&
+            sample.phrases.every((phrase) => note.content?.includes(phrase)),
+        ),
+    );
+    if (state.notes.length !== previousLength) persist();
+  }
+
   function persist() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.notes));
@@ -267,7 +260,7 @@ localStorage.setItem("note", idea);
       void updateStorageStatus();
     } catch (error) {
       setSavedState(false);
-      toast("保存容量が不足しています");
+      toast("Not enough storage space");
       console.error(error);
     }
   }
@@ -279,8 +272,8 @@ localStorage.setItem("note", idea);
   function setSavedState(saved) {
     if (!el.syncState) return;
     el.syncState.querySelector("span:last-child").textContent = saved
-      ? "この端末に保存済み"
-      : "保存できませんでした";
+      ? "Saved on this device"
+      : "Could not save";
     el.syncState.querySelector(".save-dot").style.background = saved
       ? "var(--success)"
       : "var(--danger)";
@@ -332,7 +325,7 @@ localStorage.setItem("note", idea);
       el.title.focus();
       el.title.select();
     }, 0);
-    toast("新しいメモを作成しました");
+    toast("New note created");
   }
 
   function openDeleteNoteDialog() {
@@ -352,7 +345,7 @@ localStorage.setItem("note", idea);
     persist();
     render();
     if (!state.activeId) closeEditorOnMobile();
-    toast("メモを削除しました");
+    toast("Note deleted");
   }
 
   function togglePin() {
@@ -362,7 +355,7 @@ localStorage.setItem("note", idea);
     note.updatedAt = Date.now();
     persist();
     render();
-    toast(note.pinned ? "ピン留めしました" : "ピン留めを外しました");
+    toast(note.pinned ? "Note pinned" : "Note unpinned");
   }
 
   function selectNote(id) {
@@ -379,7 +372,7 @@ localStorage.setItem("note", idea);
   }
 
   function displayTitle(note) {
-    return note.title?.trim() || firstMeaningfulLine(note.content) || "無題のメモ";
+    return note.title?.trim() || firstMeaningfulLine(note.content) || "Untitled note";
   }
 
   function firstMeaningfulLine(content) {
@@ -394,20 +387,20 @@ localStorage.setItem("note", idea);
   function plainExcerpt(content) {
     return (
       content
-        .replace(/```[\s\S]*?```/g, " コード ")
+        .replace(/```[\s\S]*?```/g, " code ")
         .replace(/[#>*_`[\]()!-]/g, " ")
         .replace(/\s+/g, " ")
-        .trim() || "内容はまだありません"
+        .trim() || "No content yet"
     );
   }
 
   function filteredNotes() {
-    const query = state.query.trim().toLocaleLowerCase("ja");
+    const query = state.query.trim().toLocaleLowerCase("en-US");
     const list = state.notes.filter((note) => {
       const matchesType = state.filter === "all" || note.pinned;
       const matchesFolder = !state.folderFilter || note.folderId === state.folderFilter;
       const folderName = getFolder(note.folderId)?.name || "";
-      const haystack = `${note.title} ${note.content} ${folderName}`.toLocaleLowerCase("ja");
+      const haystack = `${note.title} ${note.content} ${folderName}`.toLocaleLowerCase("en-US");
       return matchesType && matchesFolder && (!query || haystack.includes(query));
     });
     return list.sort((a, b) => {
@@ -466,16 +459,16 @@ localStorage.setItem("note", idea);
     const percentageLabel =
       percentage > 0 && percentage < 0.1 ? "<0.1%" : `${percentage.toFixed(1)}%`;
 
-    el.storageRemaining.textContent = `残り ${formatBytes(remaining)}`;
+    el.storageRemaining.textContent = `${formatBytes(remaining)} available`;
     el.storagePercentage.textContent = percentageLabel;
-    el.storageDetail.textContent = `${formatBytes(usage)} 使用 / ${formatBytes(quota)} ${
-      estimatedByBrowser ? "利用可能" : "目安"
+    el.storageDetail.textContent = `${formatBytes(usage)} used / ${formatBytes(quota)} ${
+      estimatedByBrowser ? "available" : "estimated"
     }`;
     el.storageMeterBar.style.width = `${visiblePercentage}%`;
     el.storageMeter.setAttribute("aria-valuenow", String(Math.round(percentage)));
     el.storageMeter.setAttribute(
       "aria-valuetext",
-      `${percentageLabel}使用、残り${formatBytes(remaining)}`,
+      `${percentageLabel} used, ${formatBytes(remaining)} available`,
     );
   }
 
@@ -500,7 +493,7 @@ localStorage.setItem("note", idea);
       .querySelector('meta[name="theme-color"]')
       ?.setAttribute("content", theme.colors[0]);
     renderThemeChoices();
-    if (announce) toast(`${theme.name} テーマに変更しました`);
+    if (announce) toast(`Theme changed to ${theme.name}`);
   }
 
   function renderThemeChoices() {
@@ -552,7 +545,12 @@ localStorage.setItem("note", idea);
           button.type = "button";
           button.className = `nav-item${state.folderFilter === folder.id ? " is-active" : ""}`;
           button.style.setProperty("--folder-color", folder.color);
-          button.setAttribute("aria-label", `${folder.name}、${folder.count}件。ノートをドロップして移動`);
+          button.setAttribute(
+            "aria-label",
+            `${folder.name}, ${folder.count} ${
+              folder.count === 1 ? "note" : "notes"
+            }. Drop a note here to move it`,
+          );
           button.innerHTML = `
             <span class="flex min-w-0 items-center gap-3">
               <i data-lucide="folder" aria-hidden="true"></i>
@@ -629,13 +627,13 @@ localStorage.setItem("note", idea);
 
     if (state.folderFilter) {
       el.listEyebrow.textContent = "Folder";
-      el.listTitle.textContent = getFolder(state.folderFilter)?.name || "フォルダ";
+      el.listTitle.textContent = getFolder(state.folderFilter)?.name || "Folder";
     } else if (state.filter === "pinned") {
       el.listEyebrow.textContent = "Pinned";
-      el.listTitle.textContent = "ピン留め";
+      el.listTitle.textContent = "Pinned";
     } else {
       el.listEyebrow.textContent = "All notes";
-      el.listTitle.textContent = "すべてのメモ";
+      el.listTitle.textContent = "All notes";
     }
     lucide.createIcons();
   }
@@ -659,11 +657,11 @@ localStorage.setItem("note", idea);
   }
 
   function updateMeta(note) {
-    el.updatedAt.textContent = `更新 ${formatLongDate(note.updatedAt)}`;
+    el.updatedAt.textContent = `Updated ${formatLongDate(note.updatedAt)}`;
     el.pin.classList.toggle("is-active", note.pinned);
     el.pin.setAttribute("aria-pressed", String(note.pinned));
     const length = [...(editor.getValue() || "")].length;
-    el.wordCount.textContent = `${length.toLocaleString("ja-JP")} 文字`;
+    el.wordCount.textContent = `${length.toLocaleString("en-US")} characters`;
   }
 
   function getFolder(folderId) {
@@ -678,7 +676,7 @@ localStorage.setItem("note", idea);
     button.style.setProperty("--folder-color", folder?.color || "var(--coral)");
     button.innerHTML = `
       <i data-lucide="folder" aria-hidden="true"></i>
-      <span>${escapeHtml(folder?.name || "フォルダを選択")}</span>
+      <span>${escapeHtml(folder?.name || "Choose a folder")}</span>
       <i data-lucide="chevron-down" aria-hidden="true"></i>`;
     button.addEventListener("click", openFolderDialog);
     el.folderChip.replaceChildren(button);
@@ -712,6 +710,8 @@ localStorage.setItem("note", idea);
 
   function openFolderDialog() {
     state.colorPickerFolderId = null;
+    state.renamingFolderId = null;
+    state.deletingFolderId = null;
     renderEditableFolders();
     el.folderDialog.showModal();
     setTimeout(() => el.folderInput.focus(), 0);
@@ -744,18 +744,42 @@ localStorage.setItem("note", idea);
             <span class="min-w-0 flex-1 truncate text-left">${escapeHtml(folder.name)}</span>
             <span class="folder-count">${count}</span>
           </button>
-          <button class="mini-icon-button folder-color-button" type="button" aria-label="${escapeHtml(folder.name)}の色を変更" data-tooltip="カラー">
+          <button class="mini-icon-button folder-color-button" type="button" aria-label="Change ${escapeHtml(folder.name)} color" data-tooltip="Color">
             <i data-lucide="palette" aria-hidden="true"></i>
           </button>
-          <button class="mini-icon-button rename-folder" type="button" aria-label="${escapeHtml(folder.name)}の名前を変更" data-tooltip="名前を変更">
+          <button class="mini-icon-button rename-folder" type="button" aria-label="Rename ${escapeHtml(folder.name)}" data-tooltip="Rename">
             <i data-lucide="pencil" aria-hidden="true"></i>
           </button>
-          <button class="mini-icon-button delete-folder danger-hover" type="button" aria-label="${escapeHtml(folder.name)}を削除" data-tooltip="フォルダを削除">
+          <button class="mini-icon-button delete-folder danger-hover" type="button" aria-label="Delete ${escapeHtml(folder.name)}" data-tooltip="Delete folder">
             <i data-lucide="trash-2" aria-hidden="true"></i>
           </button>
           ${
             state.colorPickerFolderId === folder.id
-              ? `<div class="folder-color-palette" role="group" aria-label="${escapeHtml(folder.name)}のカラーパレット">${palette}</div>`
+              ? `<div class="folder-color-palette" role="group" aria-label="${escapeHtml(folder.name)} color palette">${palette}</div>`
+              : ""
+          }
+          ${
+            state.renamingFolderId === folder.id
+              ? `<form class="folder-rename-form">
+                  <input class="text-input folder-rename-input" maxlength="32" aria-label="New name for ${escapeHtml(folder.name)}" />
+                  <button class="secondary-button cancel-folder-action" type="button">Cancel</button>
+                  <button class="primary-button" type="submit">Save</button>
+                </form>`
+              : ""
+          }
+          ${
+            state.deletingFolderId === folder.id
+              ? `<div class="folder-delete-confirm">
+                  <p>${
+                    count
+                      ? `${count} ${count === 1 ? "note" : "notes"} will move to “${escapeHtml(
+                          state.folders.find((item) => item.id !== folder.id)?.name || "",
+                        )}”.`
+                      : "This folder is empty."
+                  }</p>
+                  <button class="secondary-button cancel-folder-action" type="button">Cancel</button>
+                  <button class="destructive-button confirm-folder-delete" type="button">Delete</button>
+                </div>`
               : ""
           }`;
         row.querySelector(".folder-select").addEventListener("click", () => {
@@ -765,13 +789,54 @@ localStorage.setItem("note", idea);
         row.querySelector(".folder-color-button").addEventListener("click", () => {
           state.colorPickerFolderId =
             state.colorPickerFolderId === folder.id ? null : folder.id;
+          state.renamingFolderId = null;
+          state.deletingFolderId = null;
           renderEditableFolders();
         });
         row.querySelectorAll(".folder-color-swatch").forEach((swatch) => {
           swatch.addEventListener("click", () => updateFolderColor(folder.id, swatch.dataset.color));
         });
-        row.querySelector(".rename-folder").addEventListener("click", () => renameFolder(folder.id));
-        row.querySelector(".delete-folder").addEventListener("click", () => deleteFolder(folder.id));
+        row.querySelector(".rename-folder").addEventListener("click", () => {
+          state.renamingFolderId = folder.id;
+          state.colorPickerFolderId = null;
+          state.deletingFolderId = null;
+          renderEditableFolders();
+          const input = el.editableFolders.querySelector(".folder-rename-input");
+          if (input) {
+            input.value = folder.name;
+            input.focus();
+            input.select();
+          }
+        });
+        row.querySelector(".delete-folder").addEventListener("click", () => {
+          if (state.folders.length === 1) {
+            toast("The last folder cannot be deleted");
+            return;
+          }
+          state.deletingFolderId = folder.id;
+          state.colorPickerFolderId = null;
+          state.renamingFolderId = null;
+          renderEditableFolders();
+        });
+        const renameForm = row.querySelector(".folder-rename-form");
+        if (renameForm) {
+          const input = renameForm.querySelector(".folder-rename-input");
+          input.value = folder.name;
+          renameForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+            renameFolder(folder.id, input.value);
+          });
+        }
+        row.querySelectorAll(".cancel-folder-action").forEach((button) => {
+          button.addEventListener("click", () => {
+            state.renamingFolderId = null;
+            state.deletingFolderId = null;
+            renderEditableFolders();
+          });
+        });
+        row
+          .querySelector(".confirm-folder-delete")
+          ?.addEventListener("click", () => deleteFolder(folder.id));
         return row;
       }),
     );
@@ -781,8 +846,12 @@ localStorage.setItem("note", idea);
   function addFolder(value) {
     const name = value.trim();
     if (!name) return;
-    if (state.folders.some((folder) => folder.name.toLocaleLowerCase("ja") === name.toLocaleLowerCase("ja"))) {
-      toast("同じ名前のフォルダがあります");
+    if (
+      state.folders.some(
+        (folder) => folder.name.toLocaleLowerCase("en-US") === name.toLocaleLowerCase("en-US"),
+      )
+    ) {
+      toast("A folder with that name already exists");
       return;
     }
     const folder = {
@@ -802,7 +871,7 @@ localStorage.setItem("note", idea);
     renderNoteList();
     if (note) renderFolderChip(note);
     renderEditableFolders();
-    toast(`「${name}」を作成しました`);
+    toast(`Created “${name}”`);
   }
 
   function moveActiveToFolder(folderId) {
@@ -819,7 +888,7 @@ localStorage.setItem("note", idea);
     const note = getActiveNote();
     if (note) renderFolderChip(note);
     renderEditableFolders();
-    toast(`「${folder.name}」のカラーを変更しました`);
+    toast(`Changed the color of “${folder.name}”`);
   }
 
   function moveNoteToFolder(noteId, folderId, followFolder = false) {
@@ -833,7 +902,7 @@ localStorage.setItem("note", idea);
     renderNavigation();
     renderNoteList();
     if (note.id === state.activeId) renderFolderChip(note);
-    toast(`「${displayTitle(note)}」を「${folder.name}」へ移動しました`);
+    toast(`Moved “${displayTitle(note)}” to “${folder.name}”`);
   }
 
   function cleanupNoteDrag() {
@@ -844,50 +913,46 @@ localStorage.setItem("note", idea);
       .forEach((element) => element.classList.remove("is-dragging", "is-drop-target"));
   }
 
-  function renameFolder(folderId) {
+  function renameFolder(folderId, value) {
     const folder = getFolder(folderId);
     if (!folder) return;
-    const value = window.prompt("新しいフォルダ名", folder.name);
     const name = value?.trim();
     if (!name || name === folder.name) return;
     if (
       state.folders.some(
         (item) =>
           item.id !== folder.id &&
-          item.name.toLocaleLowerCase("ja") === name.toLocaleLowerCase("ja"),
+          item.name.toLocaleLowerCase("en-US") === name.toLocaleLowerCase("en-US"),
       )
     ) {
-      toast("同じ名前のフォルダがあります");
+      toast("A folder with that name already exists");
       return;
     }
     folder.name = name;
+    state.renamingFolderId = null;
     persist();
     renderNavigation();
     renderNoteList();
     const note = getActiveNote();
     if (note) renderFolderChip(note);
     renderEditableFolders();
-    toast("フォルダ名を変更しました");
+    toast("Folder renamed");
   }
 
   function deleteFolder(folderId) {
     const folder = getFolder(folderId);
     if (!folder) return;
     if (state.folders.length === 1) {
-      toast("最後のフォルダは削除できません");
+      toast("The last folder cannot be deleted");
       return;
     }
-    const count = state.notes.filter((note) => note.folderId === folderId).length;
     const fallback = state.folders.find((item) => item.id !== folderId);
-    const message = count
-      ? `「${folder.name}」を削除し、${count}件のメモを「${fallback.name}」へ移動しますか？`
-      : `「${folder.name}」を削除しますか？`;
-    if (!window.confirm(message)) return;
     state.notes.forEach((note) => {
       if (note.folderId === folderId) note.folderId = fallback.id;
     });
     state.folders = state.folders.filter((item) => item.id !== folderId);
     if (state.colorPickerFolderId === folderId) state.colorPickerFolderId = null;
+    state.deletingFolderId = null;
     if (state.folderFilter === folderId) state.folderFilter = null;
     persist();
     renderNavigation();
@@ -895,7 +960,7 @@ localStorage.setItem("note", idea);
     const note = getActiveNote();
     if (note) renderFolderChip(note);
     renderEditableFolders();
-    toast("フォルダを削除しました");
+    toast("Folder deleted");
   }
 
   function exportActiveNote() {
@@ -909,7 +974,7 @@ localStorage.setItem("note", idea);
     link.download = `${safeFilename(displayTitle(note))}.md`;
     link.click();
     URL.revokeObjectURL(url);
-    toast("Markdownを書き出しました");
+    toast("Markdown exported");
   }
 
   function safeFilename(name) {
@@ -923,20 +988,20 @@ localStorage.setItem("note", idea);
     } catch {
       // Search marks are internal to the Vim addon; Escape still closes active search.
     }
-    toast("検索ハイライトを解除しました");
+    toast("Search highlight cleared");
   }
 
   function formatListDate(timestamp) {
     const date = new Date(timestamp);
     const now = new Date();
     if (date.toDateString() === now.toDateString()) {
-      return date.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
+      return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
     }
-    return date.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric" });
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
 
   function formatLongDate(timestamp) {
-    return new Date(timestamp).toLocaleString("ja-JP", {
+    return new Date(timestamp).toLocaleString("en-US", {
       month: "short",
       day: "numeric",
       hour: "2-digit",
@@ -999,11 +1064,11 @@ localStorage.setItem("note", idea);
     el.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
     el.sidebarToggle.setAttribute(
       "aria-label",
-      collapsed ? "サイドバーを表示" : "サイドバーを非表示",
+      collapsed ? "Show sidebar" : "Hide sidebar",
     );
     el.sidebarToggle.dataset.tooltip = collapsed
-      ? "サイドバーを表示"
-      : "サイドバーを隠す";
+      ? "Show sidebar"
+      : "Hide sidebar";
     el.sidebarToggle.innerHTML = `<i data-lucide="${
       collapsed ? "panel-left-open" : "panel-left-close"
     }" aria-hidden="true"></i>`;
@@ -1105,7 +1170,9 @@ localStorage.setItem("note", idea);
 
   document.querySelector("#sort-button").addEventListener("click", (event) => {
     state.sortAscending = !state.sortAscending;
-    event.currentTarget.dataset.tooltip = state.sortAscending ? "古い順" : "更新順";
+    event.currentTarget.dataset.tooltip = state.sortAscending
+      ? "Oldest first"
+      : "Recently updated";
     renderNoteList();
   });
 
@@ -1155,7 +1222,7 @@ localStorage.setItem("note", idea);
     state.folders = loadFolders();
     migrateLegacyFolders();
     render();
-    toast("別のタブの変更を反映しました");
+    toast("Changes from another tab were applied");
   });
 
   // Keep the explicit byte operation reachable for storage diagnostics.

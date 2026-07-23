@@ -2,6 +2,8 @@
 
 Vim キーバインドで編集する、静的な Markdown メモアプリです。ノートはブラウザの `localStorage` に保存され、サーバーには送信されません。
 
+The app starts with a blank workspace and uses English throughout the interface.
+
 ## 起動
 
 ```sh

@@ -1,14 +1,14 @@
 <!doctype html>
-<html lang="ja">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#f5f1e8" />
     <meta
       name="description"
-      content="Vimキーバインドで書ける、ブラウザ保存のMarkdownメモアプリ"
+      content="A local-first Markdown notes app with Vim keybindings"
     />
-    <title>VimNote — 考えを、手元に。</title>
+    <title>VimNote — Your thoughts, close at hand.</title>
 
     <script>
       (() => {
@@ -74,9 +74,9 @@
             id="sidebar-toggle-button"
             class="icon-button"
             type="button"
-            aria-label="サイドバーを非表示"
+            aria-label="Hide sidebar"
             aria-expanded="true"
-            data-tooltip="サイドバーを隠す"
+            data-tooltip="Hide sidebar"
           >
             <i data-lucide="panel-left-close" aria-hidden="true"></i>
           </button>
@@ -92,14 +92,14 @@
         <div class="flex items-center gap-1.5">
           <div id="sync-state" class="save-state mr-2 hidden sm:flex" aria-live="polite">
             <span class="save-dot"></span>
-            <span>この端末に保存済み</span>
+            <span>Saved on this device</span>
           </div>
           <button
             id="theme-button"
             class="icon-button"
             type="button"
-            aria-label="テーマを変更"
-            data-tooltip="テーマ"
+            aria-label="Change theme"
+            data-tooltip="Themes"
           >
             <i data-lucide="palette" aria-hidden="true"></i>
           </button>
@@ -107,8 +107,8 @@
             id="export-button"
             class="icon-button"
             type="button"
-            aria-label="ノートをエクスポート"
-            data-tooltip="Markdownを書き出す"
+            aria-label="Export note"
+            data-tooltip="Export Markdown"
           >
             <i data-lucide="download" aria-hidden="true"></i>
           </button>
@@ -116,8 +116,8 @@
             id="shortcuts-button"
             class="icon-button"
             type="button"
-            aria-label="キーボードショートカット"
-            data-tooltip="ショートカット"
+            aria-label="Keyboard shortcuts"
+            data-tooltip="Shortcuts"
           >
             <i data-lucide="keyboard" aria-hidden="true"></i>
           </button>
@@ -127,7 +127,7 @@
             type="button"
           >
             <i data-lucide="plus" aria-hidden="true"></i>
-            <span class="hidden sm:inline">新しいメモ</span>
+            <span class="hidden sm:inline">New note</span>
           </button>
         </div>
       </header>
@@ -136,18 +136,18 @@
         <aside id="navigation" class="navigation-panel">
           <div class="nav-section">
             <p class="section-label">Workspace</p>
-            <nav aria-label="メモの絞り込み" class="space-y-1">
+            <nav aria-label="Filter notes" class="space-y-1">
               <button class="nav-item is-active" data-filter="all" type="button">
                 <span class="flex items-center gap-3">
                   <i data-lucide="files" aria-hidden="true"></i>
-                  すべてのメモ
+                  All notes
                 </span>
                 <span id="all-count" class="nav-count">0</span>
               </button>
               <button class="nav-item" data-filter="pinned" type="button">
                 <span class="flex items-center gap-3">
                   <i data-lucide="pin" aria-hidden="true"></i>
-                  ピン留め
+                  Pinned
                 </span>
                 <span id="pinned-count" class="nav-count">0</span>
               </button>
@@ -163,8 +163,8 @@
                 id="manage-folders-button"
                 class="mini-icon-button"
                 type="button"
-                aria-label="フォルダを管理"
-                data-tooltip="フォルダを管理"
+                aria-label="Manage folders"
+                data-tooltip="Manage folders"
               >
                 <i data-lucide="folder-plus" aria-hidden="true"></i>
               </button>
@@ -176,21 +176,21 @@
             <i data-lucide="database" aria-hidden="true"></i>
             <div class="min-w-0 flex-1">
               <div class="flex items-baseline justify-between gap-2">
-                <p class="font-semibold text-ink">ストレージ残量</p>
+                <p class="font-semibold text-ink">Storage available</p>
                 <span id="storage-percentage" class="storage-percentage">—%</span>
               </div>
-              <p id="storage-remaining" class="mt-1 font-semibold text-ink">計算中...</p>
+              <p id="storage-remaining" class="mt-1 font-semibold text-ink">Calculating...</p>
               <div
                 class="storage-meter"
                 role="progressbar"
-                aria-label="ストレージ使用率"
+                aria-label="Storage usage"
                 aria-valuemin="0"
                 aria-valuemax="100"
                 aria-valuenow="0"
               >
                 <span id="storage-meter-bar"></span>
               </div>
-              <p id="storage-detail" class="mt-1.5">使用量を確認しています</p>
+              <p id="storage-detail" class="mt-1.5">Checking usage</p>
             </div>
           </div>
         </aside>
@@ -203,32 +203,32 @@
                 id="search-input"
                 type="search"
                 autocomplete="off"
-                placeholder="メモを検索..."
-                aria-label="メモを検索"
+                placeholder="Search notes..."
+                aria-label="Search notes"
               />
               <kbd>⌘ K</kbd>
             </label>
             <div class="mt-4 flex items-end justify-between">
               <div>
                 <p id="list-eyebrow" class="section-label mb-1">All notes</p>
-                <h2 id="list-title" class="font-serif text-2xl tracking-tight">すべてのメモ</h2>
+                <h2 id="list-title" class="font-serif text-2xl tracking-tight">All notes</h2>
               </div>
               <button
                 id="sort-button"
                 class="mini-icon-button"
                 type="button"
-                aria-label="並び順を変更"
-                data-tooltip="更新順"
+                aria-label="Change sort order"
+                data-tooltip="Recently updated"
               >
                 <i data-lucide="arrow-down-wide-narrow" aria-hidden="true"></i>
               </button>
             </div>
           </div>
-          <div id="notes-list" class="notes-list" aria-label="メモ一覧"></div>
+          <div id="notes-list" class="notes-list" aria-label="Notes"></div>
           <div id="empty-list" class="empty-list hidden">
             <i data-lucide="search-x" aria-hidden="true"></i>
-            <p class="font-semibold text-ink">見つかりませんでした</p>
-            <p>検索語やフィルターを変えてみてください。</p>
+            <p class="font-semibold text-ink">No notes found</p>
+            <p>Try a different search or filter.</p>
           </div>
         </section>
 
@@ -237,11 +237,11 @@
             <div class="empty-illustration" aria-hidden="true">
               <i data-lucide="feather"></i>
             </div>
-            <h2 class="font-serif text-3xl">まっさらな一枚から。</h2>
-            <p>新しいメモを作って、考えを書き留めましょう。</p>
+            <h2 class="font-serif text-3xl">Start with a blank page.</h2>
+            <p>Create a note and capture what is on your mind.</p>
             <button id="new-note-button-empty" class="primary-button mt-5" type="button">
               <i data-lucide="plus" aria-hidden="true"></i>
-              新しいメモ
+              New note
             </button>
           </div>
 
@@ -252,16 +252,16 @@
                 <div id="folder-chip" class="mt-1.5"></div>
               </div>
               <div class="flex shrink-0 items-center gap-1">
-                <div class="view-switch" role="group" aria-label="表示切り替え">
-                  <button class="view-option is-active" data-view="edit" type="button">編集</button>
-                  <button class="view-option" data-view="preview" type="button">プレビュー</button>
+                <div class="view-switch" role="group" aria-label="View mode">
+                  <button class="view-option is-active" data-view="edit" type="button">Edit</button>
+                  <button class="view-option" data-view="preview" type="button">Preview</button>
                 </div>
                 <button
                   id="pin-button"
                   class="icon-button"
                   type="button"
-                  aria-label="ピン留め"
-                  data-tooltip="ピン留め"
+                  aria-label="Pin note"
+                  data-tooltip="Pin note"
                 >
                   <i data-lucide="pin" aria-hidden="true"></i>
                 </button>
@@ -269,8 +269,8 @@
                   id="delete-button"
                   class="icon-button danger-hover"
                   type="button"
-                  aria-label="メモを削除"
-                  data-tooltip="削除"
+                  aria-label="Delete note"
+                  data-tooltip="Delete"
                 >
                   <i data-lucide="trash-2" aria-hidden="true"></i>
                 </button>
@@ -283,13 +283,13 @@
                 class="note-title"
                 type="text"
                 autocomplete="off"
-                placeholder="無題のメモ"
-                aria-label="メモのタイトル"
+                placeholder="Untitled note"
+                aria-label="Note title"
               />
             </div>
 
             <div id="editor-wrap" class="editor-wrap">
-              <textarea id="markdown-editor" aria-label="Markdownエディター"></textarea>
+              <textarea id="markdown-editor" aria-label="Markdown editor"></textarea>
             </div>
             <article id="preview" class="markdown-preview hidden"></article>
 
@@ -300,7 +300,7 @@
                 <span class="hidden sm:inline">markdown</span>
               </div>
               <div class="flex items-center gap-3">
-                <span id="word-count">0 文字</span>
+                <span id="word-count">0 characters</span>
                 <span class="hidden sm:inline">UTF-8</span>
                 <span>LF</span>
               </div>
@@ -316,25 +316,25 @@
       <div class="dialog-heading">
         <div>
           <p class="section-label mb-1">Vim mode</p>
-          <h2 class="font-serif text-2xl">キーボード操作</h2>
+          <h2 class="font-serif text-2xl">Keyboard shortcuts</h2>
         </div>
-        <button class="icon-button" data-close-dialog type="button" aria-label="閉じる">
+        <button class="icon-button" data-close-dialog type="button" aria-label="Close">
           <i data-lucide="x" aria-hidden="true"></i>
         </button>
       </div>
       <div class="shortcut-grid">
-        <span><kbd>i</kbd> 挿入モード</span>
-        <span><kbd>jj</kbd> / <kbd>Esc</kbd> ノーマルモード</span>
-        <span><kbd>:</kbd> コマンド</span>
-        <span><kbd>/</kbd> インクリメンタル検索</span>
-        <span><kbd>Esc Esc</kbd> 検索ハイライト解除</span>
-        <span><kbd>⌘ K</kbd> メモ検索</span>
-        <span><kbd>⌘ N</kbd> 新しいメモ</span>
-        <span><kbd>⌘ B</kbd> サイドバー切替</span>
-        <span><kbd>⌘ ⇧ P</kbd> プレビュー切替</span>
+        <span><kbd>i</kbd> Insert mode</span>
+        <span><kbd>jj</kbd> / <kbd>Esc</kbd> Normal mode</span>
+        <span><kbd>:</kbd> Command mode</span>
+        <span><kbd>/</kbd> Incremental search</span>
+        <span><kbd>Esc Esc</kbd> Clear search highlight</span>
+        <span><kbd>⌘ K</kbd> Search notes</span>
+        <span><kbd>⌘ N</kbd> New note</span>
+        <span><kbd>⌘ B</kbd> Toggle sidebar</span>
+        <span><kbd>⌘ ⇧ P</kbd> Toggle preview</span>
       </div>
       <p class="dialog-note">
-        入力は常に Markdown。タブは2スペースに展開され、変更はこの端末へ自動保存されます。
+        Notes are always written in Markdown. Tabs expand to two spaces and every change is saved automatically.
       </p>
     </dialog>
 
@@ -342,20 +342,20 @@
       <div class="dialog-heading">
         <div>
           <p class="section-label mb-1">Organize</p>
-          <h2 class="font-serif text-2xl">フォルダを管理</h2>
+          <h2 class="font-serif text-2xl">Manage folders</h2>
         </div>
-        <button class="icon-button" data-close-dialog type="button" aria-label="閉じる">
+        <button class="icon-button" data-close-dialog type="button" aria-label="Close">
           <i data-lucide="x" aria-hidden="true"></i>
         </button>
       </div>
       <p class="mt-3 text-xs leading-relaxed text-muted">
-        フォルダを選択すると、開いているメモを移動できます。
+        Select a folder to move the open note.
       </p>
       <form id="folder-form" class="mt-5">
-        <label for="folder-input" class="mb-2 block text-sm font-semibold">新しいフォルダ</label>
+        <label for="folder-input" class="mb-2 block text-sm font-semibold">New folder</label>
         <div class="flex gap-2">
-          <input id="folder-input" class="text-input" maxlength="32" placeholder="例: アイデア" />
-          <button class="primary-button" type="submit">作成</button>
+          <input id="folder-input" class="text-input" maxlength="32" placeholder="e.g. Ideas" />
+          <button class="primary-button" type="submit">Create</button>
         </div>
       </form>
       <div id="editable-folders" class="folder-manager-list"></div>
@@ -367,19 +367,19 @@
       </div>
       <div class="mt-5">
         <p class="section-label mb-1">Delete note</p>
-        <h2 class="font-serif text-2xl">このメモを削除しますか？</h2>
+        <h2 class="font-serif text-2xl">Delete this note?</h2>
         <p class="mt-3 text-xs leading-relaxed text-muted">
-          「<span id="delete-note-name" class="font-semibold text-ink"></span>」を削除します。
-          この操作は取り消せません。
+          “<span id="delete-note-name" class="font-semibold text-ink"></span>” will be
+          permanently deleted. This action cannot be undone.
         </p>
       </div>
       <div class="mt-7 flex justify-end gap-2">
         <button class="secondary-button" data-close-dialog type="button" autofocus>
-          キャンセル
+          Cancel
         </button>
         <button id="confirm-delete-note" class="destructive-button" type="button">
           <i data-lucide="trash-2" aria-hidden="true"></i>
-          削除する
+          Delete note
         </button>
       </div>
     </dialog>
@@ -388,16 +388,16 @@
       <div class="dialog-heading">
         <div>
           <p class="section-label mb-1">Appearance</p>
-          <h2 class="font-serif text-2xl">テーマを選ぶ</h2>
+          <h2 class="font-serif text-2xl">Choose a theme</h2>
         </div>
-        <button class="icon-button" data-close-dialog type="button" aria-label="閉じる">
+        <button class="icon-button" data-close-dialog type="button" aria-label="Close">
           <i data-lucide="x" aria-hidden="true"></i>
         </button>
       </div>
       <p class="mt-3 text-xs leading-relaxed text-muted">
-        選んだテーマはこのブラウザに保存され、次回も引き継がれます。
+        Your theme is saved in this browser and restored next time.
       </p>
-      <div id="theme-grid" class="theme-grid" role="radiogroup" aria-label="カラーテーマ"></div>
+      <div id="theme-grid" class="theme-grid" role="radiogroup" aria-label="Color theme"></div>
     </dialog>
 
     <div id="toast-region" class="toast-region" aria-live="polite"></div>
