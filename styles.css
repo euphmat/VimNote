@@ -693,19 +693,25 @@ input:focus-visible,
 .folder-nav-item {
   min-width: 0;
   padding: 6px 7px 6px 5px;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 11px;
   line-height: 1.2;
+  transition: background-color 140ms ease, box-shadow 140ms ease,
+    transform 140ms ease;
 }
 
 .folder-nav-item:hover {
   background: color-mix(in srgb, var(--folder-color) 7%, var(--paper-deep));
+  transform: translateX(1px);
 }
 
 .folder-nav-item.is-active {
-  background: color-mix(in srgb, var(--folder-color) 13%, var(--paper-deep));
+  background: color-mix(in srgb, var(--folder-color) 11%, var(--surface));
   color: var(--ink);
-  box-shadow: inset 2px 0 0 var(--folder-color);
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--folder-color) 28%, var(--line)),
+    0 3px 9px color-mix(in srgb, var(--folder-color) 11%, transparent);
+  transform: translateX(1px);
 }
 
 .folder-tree {
@@ -730,12 +736,16 @@ input:focus-visible,
 
 .folder-tree-row:not([data-depth="0"])::before {
   position: absolute;
-  top: -2px;
-  bottom: -2px;
-  left: calc(var(--folder-indent, 0px) - 7px);
-  width: 1px;
-  background: color-mix(in srgb, var(--folder-color) 20%, var(--line));
+  top: 50%;
+  left: calc(var(--folder-indent, 0px) - 6px);
+  width: 4px;
+  height: 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--folder-color) 62%, var(--muted));
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--folder-color) 8%, transparent);
   content: "";
+  opacity: 0.66;
+  transform: translateY(-50%);
 }
 
 .folder-disclosure {
@@ -788,6 +798,10 @@ input:focus-visible,
   color: var(--folder-color, var(--coral));
   fill: color-mix(in srgb, var(--folder-color, var(--coral)) 16%, transparent);
   stroke-width: 1.8;
+}
+
+.folder-nav-item.is-active .folder-tree-label svg {
+  fill: color-mix(in srgb, var(--folder-color, var(--coral)) 26%, transparent);
 }
 
 .folder-nav-item .nav-count {
@@ -1711,8 +1725,18 @@ input:focus-visible,
 }
 
 .folder-manager-row.is-current {
-  border-color: var(--folder-color, var(--coral));
-  box-shadow: inset 3px 0 0 var(--folder-color, var(--coral));
+  border-color: color-mix(
+    in srgb,
+    var(--folder-color, var(--coral)) 38%,
+    var(--line)
+  );
+  background: color-mix(
+    in srgb,
+    var(--folder-color, var(--coral)) 6%,
+    var(--paper)
+  );
+  box-shadow: 0 4px 12px
+    color-mix(in srgb, var(--folder-color, var(--coral)) 9%, transparent);
 }
 
 .folder-select {
