@@ -4,6 +4,7 @@
   const STORAGE_KEY = "vimnote.notes.v1";
   const ACTIVE_KEY = "vimnote.active.v1";
   const THEME_KEY = "vimnote.theme.v1";
+  const FOLDERS_KEY = "vimnote.folders.v1";
   const encoder = new TextEncoder();
   const themes = [
     { id: "paper", name: "Paper", description: "やわらかな紙", colors: ["#f5f1e8", "#252421", "#e7644b"] },
@@ -16,6 +17,11 @@
     { id: "slate", name: "Slate", description: "端正な青灰", colors: ["#e8edf0", "#253039", "#4f7596"] },
     { id: "sakura", name: "Sakura", description: "淡い桜色", colors: ["#f8ecef", "#382b31", "#c95078"] },
     { id: "solarized", name: "Solarized", description: "低コントラスト", colors: ["#fdf6e3", "#073642", "#cb4b16"] },
+  ];
+  const defaultFolders = [
+    { id: "folder-inbox", name: "受信トレイ" },
+    { id: "folder-work", name: "仕事" },
+    { id: "folder-personal", name: "個人" },
   ];
 
   const starterNotes = [
@@ -41,7 +47,7 @@ const idea = "考えを、手元に。";
 localStorage.setItem("note", idea);
 \`\`\`
 `,
-      tags: ["はじめに", "vim"],
+      folderId: "folder-inbox",
       pinned: true,
       createdAt: Date.now() - 1000 * 60 * 58,
       updatedAt: Date.now() - 1000 * 60 * 5,
@@ -56,7 +62,7 @@ localStorage.setItem("note", idea);
 - [ ] 次の小さな一歩を決める
 
 大きな目標を、今日できる単位まで小さくする。`,
-      tags: ["仕事"],
+      folderId: "folder-work",
       pinned: false,
       createdAt: Date.now() - 1000 * 60 * 60 * 25,
       updatedAt: Date.now() - 1000 * 60 * 60 * 3,
@@ -69,7 +75,7 @@ localStorage.setItem("note", idea);
 1. デザインについて
 2. 文章と思考について
 3. 小さな習慣について`,
-      tags: ["個人"],
+      folderId: "folder-personal",
       pinned: false,
       createdAt: Date.now() - 1000 * 60 * 60 * 24 * 4,
       updatedAt: Date.now() - 1000 * 60 * 60 * 24 * 2,
@@ -78,9 +84,10 @@ localStorage.setItem("note", idea);
 
   const state = {
     notes: loadNotes(),
+    folders: loadFolders(),
     activeId: localStorage.getItem(ACTIVE_KEY),
     filter: "all",
-    tagFilter: null,
+    folderFilter: null,
     query: "",
     sortAscending: false,
     view: "edit",
@@ -98,8 +105,8 @@ localStorage.setItem("note", idea);
     editorShell: document.querySelector("#editor-shell"),
     title: document.querySelector("#note-title"),
     updatedAt: document.querySelector("#updated-at"),
-    tagChips: document.querySelector("#tag-chips"),
-    tagList: document.querySelector("#tag-list"),
+    folderChip: document.querySelector("#folder-chip"),
+    folderList: document.querySelector("#folder-list"),
     allCount: document.querySelector("#all-count"),
     pinnedCount: document.querySelector("#pinned-count"),
     search: document.querySelector("#search-input"),
@@ -117,15 +124,16 @@ localStorage.setItem("note", idea);
     backdrop: document.querySelector("#mobile-backdrop"),
     editorPanel: document.querySelector("#editor-panel"),
     shortcutsDialog: document.querySelector("#shortcuts-dialog"),
-    tagDialog: document.querySelector("#tag-dialog"),
-    tagForm: document.querySelector("#tag-form"),
-    tagInput: document.querySelector("#tag-input"),
-    editableTags: document.querySelector("#editable-tags"),
+    folderDialog: document.querySelector("#folder-dialog"),
+    folderForm: document.querySelector("#folder-form"),
+    folderInput: document.querySelector("#folder-input"),
+    editableFolders: document.querySelector("#editable-folders"),
     themeDialog: document.querySelector("#theme-dialog"),
     themeGrid: document.querySelector("#theme-grid"),
     toastRegion: document.querySelector("#toast-region"),
   };
 
+  migrateLegacyFolders();
   if (!state.notes.length) {
     state.notes = starterNotes;
     persist();
@@ -174,9 +182,47 @@ localStorage.setItem("note", idea);
     }
   }
 
+  function loadFolders() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(FOLDERS_KEY) || "[]");
+      const valid = Array.isArray(saved)
+        ? saved.filter((folder) => folder?.id && folder?.name?.trim())
+        : [];
+      return valid.length ? valid : defaultFolders.map((folder) => ({ ...folder }));
+    } catch {
+      return defaultFolders.map((folder) => ({ ...folder }));
+    }
+  }
+
+  function migrateLegacyFolders() {
+    let changed = false;
+    state.notes.forEach((note) => {
+      if (!note.folderId) {
+        const legacyName = note.tags?.[0]?.trim() || "受信トレイ";
+        let folder = state.folders.find((item) => item.name === legacyName);
+        if (!folder) {
+          folder = { id: crypto.randomUUID(), name: legacyName };
+          state.folders.push(folder);
+        }
+        note.folderId = folder.id;
+        changed = true;
+      }
+      if (!state.folders.some((folder) => folder.id === note.folderId)) {
+        note.folderId = state.folders[0].id;
+        changed = true;
+      }
+      if ("tags" in note) {
+        delete note.tags;
+        changed = true;
+      }
+    });
+    if (changed) persist();
+  }
+
   function persist() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state.notes));
+      localStorage.setItem(FOLDERS_KEY, JSON.stringify(state.folders));
       if (state.activeId) localStorage.setItem(ACTIVE_KEY, state.activeId);
       setSavedState(true);
     } catch (error) {
@@ -227,7 +273,7 @@ localStorage.setItem("note", idea);
       id: crypto.randomUUID(),
       title: "",
       content: "",
-      tags: [],
+      folderId: state.folderFilter || state.folders[0].id,
       pinned: false,
       createdAt: now,
       updatedAt: now,
@@ -235,7 +281,6 @@ localStorage.setItem("note", idea);
     state.notes.unshift(note);
     state.activeId = note.id;
     state.filter = "all";
-    state.tagFilter = null;
     persist();
     render();
     openEditorOnMobile();
@@ -310,9 +355,10 @@ localStorage.setItem("note", idea);
     const query = state.query.trim().toLocaleLowerCase("ja");
     const list = state.notes.filter((note) => {
       const matchesType = state.filter === "all" || note.pinned;
-      const matchesTag = !state.tagFilter || note.tags.includes(state.tagFilter);
-      const haystack = `${note.title} ${note.content} ${note.tags.join(" ")}`.toLocaleLowerCase("ja");
-      return matchesType && matchesTag && (!query || haystack.includes(query));
+      const matchesFolder = !state.folderFilter || note.folderId === state.folderFilter;
+      const folderName = getFolder(note.folderId)?.name || "";
+      const haystack = `${note.title} ${note.content} ${folderName}`.toLocaleLowerCase("ja");
+      return matchesType && matchesFolder && (!query || haystack.includes(query));
     });
     return list.sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
@@ -379,29 +425,28 @@ localStorage.setItem("note", idea);
     document.querySelectorAll("[data-filter]").forEach((button) => {
       button.classList.toggle(
         "is-active",
-        button.dataset.filter === state.filter && !state.tagFilter,
+        button.dataset.filter === state.filter && !state.folderFilter,
       );
     });
 
-    const counts = new Map();
-    state.notes.forEach((note) => {
-      note.tags.forEach((tag) => counts.set(tag, (counts.get(tag) || 0) + 1));
-    });
-    el.tagList.replaceChildren(
-      ...[...counts.entries()]
-        .sort(([a], [b]) => a.localeCompare(b, "ja"))
-        .map(([tag, count]) => {
+    el.folderList.replaceChildren(
+      ...state.folders
+        .map((folder) => ({
+          ...folder,
+          count: state.notes.filter((note) => note.folderId === folder.id).length,
+        }))
+        .map((folder) => {
           const button = document.createElement("button");
           button.type = "button";
-          button.className = `nav-item${state.tagFilter === tag ? " is-active" : ""}`;
+          button.className = `nav-item${state.folderFilter === folder.id ? " is-active" : ""}`;
           button.innerHTML = `
             <span class="flex min-w-0 items-center gap-3">
-              <i data-lucide="hash" aria-hidden="true"></i>
-              <span class="truncate">${escapeHtml(tag)}</span>
+              <i data-lucide="folder" aria-hidden="true"></i>
+              <span class="truncate">${escapeHtml(folder.name)}</span>
             </span>
-            <span class="nav-count">${count}</span>`;
+            <span class="nav-count">${folder.count}</span>`;
           button.addEventListener("click", () => {
-            state.tagFilter = tag;
+            state.folderFilter = folder.id;
             state.filter = "all";
             renderNavigation();
             renderNoteList();
@@ -422,13 +467,14 @@ localStorage.setItem("note", idea);
         card.className = `note-card${note.id === state.activeId ? " is-active" : ""}`;
         card.dataset.id = note.id;
         const pin = note.pinned ? '<i data-lucide="pin" aria-hidden="true"></i>' : "";
+        const folder = getFolder(note.folderId);
         card.innerHTML = `
           <div class="note-title-row">
             <h3 class="note-card-title">${pin}${escapeHtml(displayTitle(note))}</h3>
             <time class="note-date">${formatListDate(note.updatedAt)}</time>
           </div>
           <p class="note-excerpt">${escapeHtml(plainExcerpt(note.content))}</p>
-          ${note.tags[0] ? `<span class="note-tag"># ${escapeHtml(note.tags[0])}</span>` : ""}
+          ${folder ? `<span class="note-folder"><i data-lucide="folder" aria-hidden="true"></i>${escapeHtml(folder.name)}</span>` : ""}
         `;
         card.addEventListener("click", () => selectNote(note.id));
         return card;
@@ -436,9 +482,9 @@ localStorage.setItem("note", idea);
     );
     el.emptyList.classList.toggle("hidden", notes.length > 0);
 
-    if (state.tagFilter) {
-      el.listEyebrow.textContent = "Tag";
-      el.listTitle.textContent = `# ${state.tagFilter}`;
+    if (state.folderFilter) {
+      el.listEyebrow.textContent = "Folder";
+      el.listTitle.textContent = getFolder(state.folderFilter)?.name || "フォルダ";
     } else if (state.filter === "pinned") {
       el.listEyebrow.textContent = "Pinned";
       el.listTitle.textContent = "ピン留め";
@@ -462,7 +508,7 @@ localStorage.setItem("note", idea);
     editor.setCursor({ line: 0, ch: 0 });
     editor._loadingNote = false;
     updateMeta(note);
-    renderTagChips(note);
+    renderFolderChip(note);
     renderPreview(note);
     requestAnimationFrame(() => editor.refresh());
   }
@@ -475,26 +521,21 @@ localStorage.setItem("note", idea);
     el.wordCount.textContent = `${length.toLocaleString("ja-JP")} 文字`;
   }
 
-  function renderTagChips(note) {
-    el.tagChips.replaceChildren(
-      ...note.tags.map((tag) => {
-        const chip = document.createElement("span");
-        chip.className = "tag-chip";
-        chip.innerHTML = `# ${escapeHtml(tag)} <button type="button" aria-label="${escapeHtml(
-          tag,
-        )}を外す"><i data-lucide="x" aria-hidden="true"></i></button>`;
-        chip.querySelector("button").addEventListener("click", () => removeTag(tag));
-        return chip;
-      }),
-    );
-    if (!note.tags.length) {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "tag-chip";
-      button.textContent = "+ タグ";
-      button.addEventListener("click", openTagDialog);
-      el.tagChips.append(button);
-    }
+  function getFolder(folderId) {
+    return state.folders.find((folder) => folder.id === folderId) || null;
+  }
+
+  function renderFolderChip(note) {
+    const folder = getFolder(note.folderId);
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "folder-chip";
+    button.innerHTML = `
+      <i data-lucide="folder" aria-hidden="true"></i>
+      <span>${escapeHtml(folder?.name || "フォルダを選択")}</span>
+      <i data-lucide="chevron-down" aria-hidden="true"></i>`;
+    button.addEventListener("click", openFolderDialog);
+    el.folderChip.replaceChildren(button);
     lucide.createIcons();
   }
 
@@ -523,53 +564,131 @@ localStorage.setItem("note", idea);
     }
   }
 
-  function openTagDialog() {
-    renderEditableTags();
-    el.tagDialog.showModal();
-    setTimeout(() => el.tagInput.focus(), 0);
+  function openFolderDialog() {
+    renderEditableFolders();
+    el.folderDialog.showModal();
+    setTimeout(() => el.folderInput.focus(), 0);
   }
 
-  function renderEditableTags() {
+  function renderEditableFolders() {
     const note = getActiveNote();
-    el.editableTags.replaceChildren();
-    if (!note) return;
-    note.tags.forEach((tag) => {
-      const chip = document.createElement("span");
-      chip.className = "tag-chip";
-      chip.innerHTML = `# ${escapeHtml(tag)} <button type="button" aria-label="${escapeHtml(
-        tag,
-      )}を外す"><i data-lucide="x" aria-hidden="true"></i></button>`;
-      chip.querySelector("button").addEventListener("click", () => {
-        removeTag(tag);
-        renderEditableTags();
-      });
-      el.editableTags.append(chip);
-    });
+    el.editableFolders.replaceChildren(
+      ...state.folders.map((folder) => {
+        const count = state.notes.filter((item) => item.folderId === folder.id).length;
+        const row = document.createElement("div");
+        row.className = `folder-manager-row${note?.folderId === folder.id ? " is-current" : ""}`;
+        row.innerHTML = `
+          <button class="folder-select" type="button" ${note ? "" : "disabled"}>
+            <i data-lucide="${note?.folderId === folder.id ? "folder-check" : "folder"}" aria-hidden="true"></i>
+            <span class="min-w-0 flex-1 truncate text-left">${escapeHtml(folder.name)}</span>
+            <span class="folder-count">${count}</span>
+          </button>
+          <button class="mini-icon-button rename-folder" type="button" aria-label="${escapeHtml(folder.name)}の名前を変更" data-tooltip="名前を変更">
+            <i data-lucide="pencil" aria-hidden="true"></i>
+          </button>
+          <button class="mini-icon-button delete-folder danger-hover" type="button" aria-label="${escapeHtml(folder.name)}を削除" data-tooltip="フォルダを削除">
+            <i data-lucide="trash-2" aria-hidden="true"></i>
+          </button>`;
+        row.querySelector(".folder-select").addEventListener("click", () => {
+          moveActiveToFolder(folder.id);
+          renderEditableFolders();
+        });
+        row.querySelector(".rename-folder").addEventListener("click", () => renameFolder(folder.id));
+        row.querySelector(".delete-folder").addEventListener("click", () => deleteFolder(folder.id));
+        return row;
+      }),
+    );
     lucide.createIcons();
   }
 
-  function addTag(value) {
+  function addFolder(value) {
+    const name = value.trim();
+    if (!name) return;
+    if (state.folders.some((folder) => folder.name.toLocaleLowerCase("ja") === name.toLocaleLowerCase("ja"))) {
+      toast("同じ名前のフォルダがあります");
+      return;
+    }
+    const folder = { id: crypto.randomUUID(), name };
+    state.folders.push(folder);
     const note = getActiveNote();
-    const tag = value.trim().replace(/^#/, "");
-    if (!note || !tag || note.tags.includes(tag)) return;
-    note.tags.push(tag);
-    note.updatedAt = Date.now();
+    if (note) {
+      note.folderId = folder.id;
+      note.updatedAt = Date.now();
+      if (state.folderFilter) state.folderFilter = folder.id;
+    }
     persist();
     renderNavigation();
     renderNoteList();
-    renderTagChips(note);
-    renderEditableTags();
+    if (note) renderFolderChip(note);
+    renderEditableFolders();
+    toast(`「${name}」を作成しました`);
   }
 
-  function removeTag(tag) {
+  function moveActiveToFolder(folderId) {
     const note = getActiveNote();
-    if (!note) return;
-    note.tags = note.tags.filter((item) => item !== tag);
+    const folder = getFolder(folderId);
+    if (!note || !folder || note.folderId === folderId) return;
+    note.folderId = folderId;
     note.updatedAt = Date.now();
+    if (state.folderFilter) state.folderFilter = folderId;
     persist();
     renderNavigation();
     renderNoteList();
-    renderTagChips(note);
+    renderFolderChip(note);
+    toast(`「${folder.name}」へ移動しました`);
+  }
+
+  function renameFolder(folderId) {
+    const folder = getFolder(folderId);
+    if (!folder) return;
+    const value = window.prompt("新しいフォルダ名", folder.name);
+    const name = value?.trim();
+    if (!name || name === folder.name) return;
+    if (
+      state.folders.some(
+        (item) =>
+          item.id !== folder.id &&
+          item.name.toLocaleLowerCase("ja") === name.toLocaleLowerCase("ja"),
+      )
+    ) {
+      toast("同じ名前のフォルダがあります");
+      return;
+    }
+    folder.name = name;
+    persist();
+    renderNavigation();
+    renderNoteList();
+    const note = getActiveNote();
+    if (note) renderFolderChip(note);
+    renderEditableFolders();
+    toast("フォルダ名を変更しました");
+  }
+
+  function deleteFolder(folderId) {
+    const folder = getFolder(folderId);
+    if (!folder) return;
+    if (state.folders.length === 1) {
+      toast("最後のフォルダは削除できません");
+      return;
+    }
+    const count = state.notes.filter((note) => note.folderId === folderId).length;
+    const fallback = state.folders.find((item) => item.id !== folderId);
+    const message = count
+      ? `「${folder.name}」を削除し、${count}件のメモを「${fallback.name}」へ移動しますか？`
+      : `「${folder.name}」を削除しますか？`;
+    if (!window.confirm(message)) return;
+    state.notes.forEach((note) => {
+      if (note.folderId === folderId) note.folderId = fallback.id;
+    });
+    state.folders = state.folders.filter((item) => item.id !== folderId);
+    if (state.folderFilter === folderId) state.folderFilter = null;
+    persist();
+    renderNavigation();
+    renderNoteList();
+    const note = getActiveNote();
+    if (note) renderFolderChip(note);
+    renderEditableFolders();
+    toast("フォルダを削除しました");
   }
 
   function exportActiveNote() {
@@ -689,7 +808,7 @@ localStorage.setItem("note", idea);
   document.querySelectorAll("[data-filter]").forEach((button) => {
     button.addEventListener("click", () => {
       state.filter = button.dataset.filter;
-      state.tagFilter = null;
+      state.folderFilter = null;
       renderNavigation();
       renderNoteList();
       closeMobileMenu();
@@ -716,17 +835,17 @@ localStorage.setItem("note", idea);
     renderThemeChoices();
     el.themeDialog.showModal();
   });
-  document.querySelector("#manage-tags-button").addEventListener("click", openTagDialog);
+  document.querySelector("#manage-folders-button").addEventListener("click", openFolderDialog);
 
   document.querySelectorAll("[data-close-dialog]").forEach((button) => {
     button.addEventListener("click", () => button.closest("dialog").close());
   });
 
-  el.tagForm.addEventListener("submit", (event) => {
+  el.folderForm.addEventListener("submit", (event) => {
     event.preventDefault();
-    addTag(el.tagInput.value);
-    el.tagInput.value = "";
-    el.tagInput.focus();
+    addFolder(el.folderInput.value);
+    el.folderInput.value = "";
+    el.folderInput.focus();
   });
 
   el.search.addEventListener("input", (event) => {
@@ -770,8 +889,10 @@ localStorage.setItem("note", idea);
 
   window.addEventListener("beforeunload", saveActiveNow);
   window.addEventListener("storage", (event) => {
-    if (event.key !== STORAGE_KEY) return;
+    if (![STORAGE_KEY, FOLDERS_KEY].includes(event.key)) return;
     state.notes = loadNotes();
+    state.folders = loadFolders();
+    migrateLegacyFolders();
     render();
     toast("別のタブの変更を反映しました");
   });

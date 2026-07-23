@@ -151,18 +151,18 @@
 
           <div class="nav-section min-h-0 flex-1">
             <div class="mb-2 flex items-center justify-between">
-              <p class="section-label mb-0">Tags</p>
+              <p class="section-label mb-0">Folders</p>
               <button
-                id="manage-tags-button"
+                id="manage-folders-button"
                 class="mini-icon-button"
                 type="button"
-                aria-label="タグを編集"
-                data-tooltip="タグを編集"
+                aria-label="フォルダを管理"
+                data-tooltip="フォルダを管理"
               >
-                <i data-lucide="tag" aria-hidden="true"></i>
+                <i data-lucide="folder-plus" aria-hidden="true"></i>
               </button>
             </div>
-            <div id="tag-list" class="space-y-1 overflow-y-auto"></div>
+            <div id="folder-list" class="space-y-1 overflow-y-auto"></div>
           </div>
 
           <div class="storage-note">
@@ -228,7 +228,7 @@
             <div class="editor-toolbar">
               <div class="min-w-0">
                 <p id="updated-at" class="text-xs font-medium text-muted"></p>
-                <div id="tag-chips" class="mt-1.5 flex flex-wrap gap-1.5"></div>
+                <div id="folder-chip" class="mt-1.5"></div>
               </div>
               <div class="flex shrink-0 items-center gap-1">
                 <div class="view-switch" role="group" aria-label="表示切り替え">
@@ -316,24 +316,27 @@
       </p>
     </dialog>
 
-    <dialog id="tag-dialog" class="app-dialog app-dialog-small">
+    <dialog id="folder-dialog" class="app-dialog app-dialog-small">
       <div class="dialog-heading">
         <div>
           <p class="section-label mb-1">Organize</p>
-          <h2 class="font-serif text-2xl">タグを編集</h2>
+          <h2 class="font-serif text-2xl">フォルダを管理</h2>
         </div>
         <button class="icon-button" data-close-dialog type="button" aria-label="閉じる">
           <i data-lucide="x" aria-hidden="true"></i>
         </button>
       </div>
-      <form id="tag-form" class="mt-6">
-        <label for="tag-input" class="mb-2 block text-sm font-semibold">タグ名</label>
+      <p class="mt-3 text-xs leading-relaxed text-muted">
+        フォルダを選択すると、開いているメモを移動できます。
+      </p>
+      <form id="folder-form" class="mt-5">
+        <label for="folder-input" class="mb-2 block text-sm font-semibold">新しいフォルダ</label>
         <div class="flex gap-2">
-          <input id="tag-input" class="text-input" maxlength="24" placeholder="例: アイデア" />
-          <button class="primary-button" type="submit">追加</button>
+          <input id="folder-input" class="text-input" maxlength="32" placeholder="例: アイデア" />
+          <button class="primary-button" type="submit">作成</button>
         </div>
       </form>
-      <div id="editable-tags" class="mt-5 flex flex-wrap gap-2"></div>
+      <div id="editable-folders" class="folder-manager-list"></div>
     </dialog>
 
     <dialog id="theme-dialog" class="app-dialog">
