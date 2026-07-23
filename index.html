@@ -173,10 +173,24 @@
           </div>
 
           <div class="storage-note">
-            <i data-lucide="hard-drive" aria-hidden="true"></i>
-            <div>
-              <p class="font-semibold text-ink">ローカル保存</p>
-              <p>データはこのブラウザの中だけに保存されます。</p>
+            <i data-lucide="database" aria-hidden="true"></i>
+            <div class="min-w-0 flex-1">
+              <div class="flex items-baseline justify-between gap-2">
+                <p class="font-semibold text-ink">ストレージ残量</p>
+                <span id="storage-percentage" class="storage-percentage">—%</span>
+              </div>
+              <p id="storage-remaining" class="mt-1 font-semibold text-ink">計算中...</p>
+              <div
+                class="storage-meter"
+                role="progressbar"
+                aria-label="ストレージ使用率"
+                aria-valuemin="0"
+                aria-valuemax="100"
+                aria-valuenow="0"
+              >
+                <span id="storage-meter-bar"></span>
+              </div>
+              <p id="storage-detail" class="mt-1.5">使用量を確認しています</p>
             </div>
           </div>
         </aside>

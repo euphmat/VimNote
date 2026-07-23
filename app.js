@@ -123,6 +123,11 @@ localStorage.setItem("note", idea);
     cursor: document.querySelector("#cursor-position"),
     wordCount: document.querySelector("#word-count"),
     syncState: document.querySelector("#sync-state"),
+    storagePercentage: document.querySelector("#storage-percentage"),
+    storageRemaining: document.querySelector("#storage-remaining"),
+    storageMeter: document.querySelector(".storage-meter"),
+    storageMeterBar: document.querySelector("#storage-meter-bar"),
+    storageDetail: document.querySelector("#storage-detail"),
     navigation: document.querySelector("#navigation"),
     sidebarToggle: document.querySelector("#sidebar-toggle-button"),
     backdrop: document.querySelector("#mobile-backdrop"),
@@ -232,6 +237,7 @@ localStorage.setItem("note", idea);
       localStorage.setItem(FOLDERS_KEY, JSON.stringify(state.folders));
       if (state.activeId) localStorage.setItem(ACTIVE_KEY, state.activeId);
       setSavedState(true);
+      void updateStorageStatus();
     } catch (error) {
       setSavedState(false);
       toast("保存容量が不足しています");
@@ -386,7 +392,68 @@ localStorage.setItem("note", idea);
     renderNoteList();
     loadActiveNote();
     renderThemeChoices();
+    void updateStorageStatus();
     lucide.createIcons();
+  }
+
+  function getLocalStorageUsage() {
+    let bytes = 0;
+    try {
+      for (let index = 0; index < localStorage.length; index += 1) {
+        const key = localStorage.key(index) || "";
+        const value = localStorage.getItem(key) || "";
+        bytes += encoder.encode(key).length + encoder.encode(value).length;
+      }
+    } catch {
+      return 0;
+    }
+    return bytes;
+  }
+
+  async function updateStorageStatus() {
+    const fallbackQuota = 5 * 1024 * 1024;
+    let usage = getLocalStorageUsage();
+    let quota = fallbackQuota;
+    let estimatedByBrowser = false;
+
+    try {
+      if (navigator.storage?.estimate) {
+        const estimate = await navigator.storage.estimate();
+        if (Number.isFinite(estimate.quota) && estimate.quota > 0) {
+          quota = estimate.quota;
+          usage = Math.max(usage, Number(estimate.usage) || 0);
+          estimatedByBrowser = true;
+        }
+      }
+    } catch {
+      // Fall back to the measured localStorage payload and a 5 MiB reference quota.
+    }
+
+    const remaining = Math.max(0, quota - usage);
+    const percentage = Math.min(100, quota ? (usage / quota) * 100 : 0);
+    const visiblePercentage = usage > 0 ? Math.max(2, percentage) : 0;
+    const percentageLabel =
+      percentage > 0 && percentage < 0.1 ? "<0.1%" : `${percentage.toFixed(1)}%`;
+
+    el.storageRemaining.textContent = `残り ${formatBytes(remaining)}`;
+    el.storagePercentage.textContent = percentageLabel;
+    el.storageDetail.textContent = `${formatBytes(usage)} 使用 / ${formatBytes(quota)} ${
+      estimatedByBrowser ? "利用可能" : "目安"
+    }`;
+    el.storageMeterBar.style.width = `${visiblePercentage}%`;
+    el.storageMeter.setAttribute("aria-valuenow", String(Math.round(percentage)));
+    el.storageMeter.setAttribute(
+      "aria-valuetext",
+      `${percentageLabel}使用、残り${formatBytes(remaining)}`,
+    );
+  }
+
+  function formatBytes(bytes) {
+    if (!Number.isFinite(bytes) || bytes < 0) return "—";
+    if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
+    if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
+    if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${Math.round(bytes)} B`;
   }
 
   function applyTheme(themeId, announce = true) {
