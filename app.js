@@ -7,6 +7,7 @@
   const FOLDERS_KEY = "vimnote.folders.v1";
   const SIDEBAR_KEY = "vimnote.sidebar-collapsed.v1";
   const NOTE_DENSITY_KEY = "vimnote.note-density.v1";
+  const COLLAPSED_FOLDERS_KEY = "vimnote.collapsed-folders.v1";
   const encoder = new TextEncoder();
   const themes = [
     { id: "paper", name: "Paper", description: "Soft and warm", colors: ["#f5f1e8", "#252421", "#e7644b"] },
@@ -53,6 +54,7 @@
       document.documentElement.dataset.noteDensity === "compact"
         ? "compact"
         : "comfortable",
+    collapsedFolderIds: loadCollapsedFolders(),
     sidebarCollapsed: document.documentElement.dataset.sidebar === "collapsed",
     theme: themes.some((theme) => theme.id === document.documentElement.dataset.theme)
       ? document.documentElement.dataset.theme
@@ -186,6 +188,30 @@
         : defaultFolders.map((folder) => ({ ...folder }));
     } catch {
       return defaultFolders.map((folder) => ({ ...folder }));
+    }
+  }
+
+  function loadCollapsedFolders() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(COLLAPSED_FOLDERS_KEY) || "[]");
+      return new Set(
+        Array.isArray(saved)
+          ? saved.filter((folderId) => typeof folderId === "string")
+          : [],
+      );
+    } catch {
+      return new Set();
+    }
+  }
+
+  function persistCollapsedFolders() {
+    try {
+      localStorage.setItem(
+        COLLAPSED_FOLDERS_KEY,
+        JSON.stringify([...state.collapsedFolderIds]),
+      );
+    } catch {
+      // Keep the current-session tree state when storage is unavailable.
     }
   }
 
@@ -663,23 +689,28 @@
     });
 
     el.folderList.replaceChildren(
-      ...flattenedFolders()
-        .map(({ folder, depth }) => ({
+      ...flattenedFolders({ respectCollapsed: true })
+        .map(({ folder, depth, hasChildren, collapsed }) => ({
           ...folder,
           depth,
+          hasChildren,
+          collapsed,
           count: folderTreeNoteCount(folder.id),
         }))
         .map((folder) => {
+          const row = document.createElement("div");
+          row.className = "folder-tree-row";
+          row.style.setProperty("--folder-color", folder.color);
+          row.style.setProperty("--folder-indent", `${folder.depth * 12}px`);
+          row.dataset.depth = folder.depth;
+          row.dataset.folderId = folder.id;
+
           const button = document.createElement("button");
           button.type = "button";
           button.className = `nav-item folder-nav-item${
             state.folderFilter === folder.id ? " is-active" : ""
           }`;
-          button.style.setProperty("--folder-color", folder.color);
-          button.style.setProperty("--folder-depth", folder.depth);
-          button.style.setProperty("--folder-indent", `${folder.depth * 16}px`);
           button.dataset.folderId = folder.id;
-          button.dataset.depth = folder.depth;
           button.setAttribute(
             "aria-label",
             `${folder.name}, ${folder.count} ${
@@ -687,11 +718,35 @@
             }. Drop a note here to move it`,
           );
           button.innerHTML = `
-            <span class="flex min-w-0 items-center gap-3">
-              <i data-lucide="folder" aria-hidden="true"></i>
-              <span class="truncate">${escapeHtml(folder.name)}</span>
+            <span class="folder-tree-label">
+              <i data-lucide="${
+                folder.hasChildren && !folder.collapsed ? "folder-open" : "folder"
+              }" aria-hidden="true"></i>
+              <span>${escapeHtml(folder.name)}</span>
             </span>
             <span class="nav-count">${folder.count}</span>`;
+          const disclosure = document.createElement(
+            folder.hasChildren ? "button" : "span",
+          );
+          disclosure.className = `folder-disclosure${
+            folder.hasChildren ? "" : " is-placeholder"
+          }`;
+          if (folder.hasChildren) {
+            disclosure.type = "button";
+            disclosure.setAttribute(
+              "aria-label",
+              `${folder.collapsed ? "Expand" : "Collapse"} ${folder.name}`,
+            );
+            disclosure.setAttribute("aria-expanded", String(!folder.collapsed));
+            disclosure.innerHTML = `<i data-lucide="chevron-${
+              folder.collapsed ? "right" : "down"
+            }" aria-hidden="true"></i>`;
+            disclosure.addEventListener("click", (event) => {
+              event.stopPropagation();
+              toggleFolderCollapsed(folder.id);
+            });
+          }
+          row.append(disclosure, button);
           button.addEventListener("click", () => {
             state.folderFilter = folder.id;
             state.filter = "all";
@@ -700,7 +755,7 @@
             closeMobileMenu();
             lucide.createIcons();
           });
-          button.addEventListener("contextmenu", (event) => {
+          row.addEventListener("contextmenu", (event) => {
             event.preventDefault();
             event.stopPropagation();
             openFolderContextMenu(folder.id, event.clientX, event.clientY);
@@ -727,7 +782,7 @@
             cleanupNoteDrag();
             moveNoteToFolder(noteId, folder.id);
           });
-          return button;
+          return row;
         }),
     );
   }
@@ -828,7 +883,7 @@
     return ids;
   }
 
-  function flattenedFolders() {
+  function flattenedFolders({ respectCollapsed = false } = {}) {
     const rows = [];
     const visited = new Set();
     const visit = (parentId, depth) => {
@@ -837,8 +892,13 @@
         .forEach((folder) => {
           if (visited.has(folder.id)) return;
           visited.add(folder.id);
-          rows.push({ folder, depth });
-          visit(folder.id, depth + 1);
+          const hasChildren = state.folders.some(
+            (item) => item.parentId === folder.id,
+          );
+          const collapsed =
+            hasChildren && state.collapsedFolderIds.has(folder.id);
+          rows.push({ folder, depth, hasChildren, collapsed });
+          if (!respectCollapsed || !collapsed) visit(folder.id, depth + 1);
         });
     };
     visit(null, 0);
@@ -846,6 +906,19 @@
       if (!visited.has(folder.id)) rows.push({ folder, depth: 0 });
     });
     return rows;
+  }
+
+  function toggleFolderCollapsed(folderId) {
+    const hasChildren = state.folders.some((folder) => folder.parentId === folderId);
+    if (!hasChildren) return;
+    if (state.collapsedFolderIds.has(folderId)) {
+      state.collapsedFolderIds.delete(folderId);
+    } else {
+      state.collapsedFolderIds.add(folderId);
+    }
+    persistCollapsedFolders();
+    renderNavigation();
+    lucide.createIcons();
   }
 
   function folderTreeNoteCount(folderId) {
@@ -1062,6 +1135,10 @@
       parentId: parent?.id || null,
     };
     state.folders.push(folder);
+    if (parent) {
+      state.collapsedFolderIds.delete(parent.id);
+      persistCollapsedFolders();
+    }
     const note = getActiveNote();
     if (note && moveActiveNote) {
       note.folderId = folder.id;
@@ -1158,6 +1235,8 @@
       if (treeIds.has(note.folderId)) note.folderId = fallback.id;
     });
     state.folders = state.folders.filter((item) => !treeIds.has(item.id));
+    treeIds.forEach((id) => state.collapsedFolderIds.delete(id));
+    persistCollapsedFolders();
     if (treeIds.has(state.colorPickerFolderId)) state.colorPickerFolderId = null;
     if (treeIds.has(state.renamingFolderId)) state.renamingFolderId = null;
     state.deletingFolderId = null;
@@ -1222,6 +1301,10 @@
         updatedAt: now + index,
       }));
     state.notes.unshift(...noteClones);
+    if (source.parentId) {
+      state.collapsedFolderIds.delete(source.parentId);
+      persistCollapsedFolders();
+    }
     persist();
     renderNavigation();
     renderNoteList();
@@ -1262,6 +1345,8 @@
 
   function renderFolderContextMenu() {
     const folder = getFolder(state.contextFolderId);
+    const hasChildren =
+      folder && state.folders.some((item) => item.parentId === folder.id);
     const menu = el.folderContextMenu;
     const palette = folderColors
       .map(
@@ -1334,6 +1419,22 @@
         ${
           folder
             ? `
+              ${
+                hasChildren
+                  ? `<button type="button" role="menuitem" data-context-action="toggle-collapse">
+                      <i data-lucide="${
+                        state.collapsedFolderIds.has(folder.id)
+                          ? "chevrons-up-down"
+                          : "chevrons-down-up"
+                      }" aria-hidden="true"></i>
+                      ${
+                        state.collapsedFolderIds.has(folder.id)
+                          ? "Expand subfolders"
+                          : "Collapse subfolders"
+                      }
+                    </button>`
+                  : ""
+              }
               <button type="button" role="menuitem" data-context-action="rename">
                 <i data-lucide="pencil" aria-hidden="true"></i>Rename
               </button>
@@ -1377,6 +1478,11 @@
         }
         if (action === "duplicate" && folder) {
           duplicateFolderTree(folder.id);
+          return;
+        }
+        if (action === "toggle-collapse" && folder) {
+          toggleFolderCollapsed(folder.id);
+          closeFolderContextMenu();
           return;
         }
         if (action === "confirm-delete" && folder) {
@@ -1903,6 +2009,12 @@
     syncSidebar();
   });
   window.addEventListener("storage", (event) => {
+    if (event.key === COLLAPSED_FOLDERS_KEY) {
+      state.collapsedFolderIds = loadCollapsedFolders();
+      renderNavigation();
+      lucide.createIcons();
+      return;
+    }
     if (event.key === NOTE_DENSITY_KEY) {
       state.noteDensity = event.newValue === "compact" ? "compact" : "comfortable";
       syncNoteDensity();

@@ -667,12 +667,115 @@ input:focus-visible,
 }
 
 .folder-nav-item {
-  position: relative;
-  padding-left: calc(10px + var(--folder-indent, 0px));
+  min-width: 0;
+  padding: 6px 7px 6px 5px;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.2;
 }
 
-.folder-nav-item:not([data-depth="0"]) {
-  border-left: 1px solid color-mix(in srgb, var(--folder-color) 28%, var(--line));
+.folder-nav-item:hover {
+  background: color-mix(in srgb, var(--folder-color) 7%, var(--paper-deep));
+}
+
+.folder-nav-item.is-active {
+  background: color-mix(in srgb, var(--folder-color) 13%, var(--paper-deep));
+  color: var(--ink);
+  box-shadow: inset 2px 0 0 var(--folder-color);
+}
+
+.folder-tree {
+  display: flex;
+  min-height: 44px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0 8px;
+}
+
+.folder-tree-row {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  align-items: center;
+  padding-left: var(--folder-indent, 0);
+  grid-template-columns: 18px minmax(0, 1fr);
+}
+
+.folder-tree-row:not([data-depth="0"])::before {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  left: calc(var(--folder-indent, 0px) - 7px);
+  width: 1px;
+  background: color-mix(in srgb, var(--folder-color) 20%, var(--line));
+  content: "";
+}
+
+.folder-disclosure {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  width: 18px;
+  height: 26px;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--subtle);
+  cursor: pointer;
+}
+
+.folder-disclosure:hover {
+  background: var(--paper-deep);
+  color: var(--ink);
+}
+
+.folder-disclosure.is-placeholder {
+  pointer-events: none;
+}
+
+.folder-disclosure svg {
+  width: 11px;
+  height: 11px;
+  stroke-width: 2;
+}
+
+.folder-tree-label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 7px;
+}
+
+.folder-tree-label span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-tree-label svg {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  color: var(--folder-color, var(--coral));
+  fill: color-mix(in srgb, var(--folder-color, var(--coral)) 16%, transparent);
+  stroke-width: 1.8;
+}
+
+.folder-nav-item .nav-count {
+  min-width: 17px;
+  padding: 1px 4px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  color: var(--muted);
+  font-size: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.folder-nav-item.is-active .nav-count {
+  background: color-mix(in srgb, var(--folder-color) 14%, transparent);
+  color: var(--ink);
 }
 
 .nav-count {
