@@ -661,6 +661,11 @@ input:focus-visible,
   stroke-width: 1.8;
 }
 
+.nav-item svg[data-lucide="folder"] {
+  color: var(--folder-color, var(--coral));
+  fill: color-mix(in srgb, var(--folder-color, var(--coral)) 18%, transparent);
+}
+
 .nav-count {
   min-width: 20px;
   color: inherit;
@@ -906,6 +911,8 @@ input:focus-visible,
 .note-folder svg {
   width: 10px;
   height: 10px;
+  color: var(--folder-color, var(--coral));
+  fill: color-mix(in srgb, var(--folder-color, var(--coral)) 20%, transparent);
 }
 
 .empty-list {
@@ -1319,6 +1326,11 @@ input:focus-visible,
   height: 10px;
 }
 
+.folder-chip svg:first-child {
+  color: var(--folder-color, var(--coral));
+  fill: color-mix(in srgb, var(--folder-color, var(--coral)) 20%, transparent);
+}
+
 .app-dialog {
   width: min(570px, calc(100vw - 32px));
   padding: 28px;
@@ -1480,12 +1492,12 @@ input:focus-visible,
   border: 1px solid var(--line);
   border-radius: 9px;
   background: var(--paper);
-  grid-template-columns: minmax(0, 1fr) 30px 30px;
+  grid-template-columns: minmax(0, 1fr) 30px 30px 30px;
 }
 
 .folder-manager-row.is-current {
-  border-color: var(--coral);
-  box-shadow: inset 3px 0 0 var(--coral);
+  border-color: var(--folder-color, var(--coral));
+  box-shadow: inset 3px 0 0 var(--folder-color, var(--coral));
 }
 
 .folder-select {
@@ -1515,13 +1527,49 @@ input:focus-visible,
   width: 15px;
   height: 15px;
   flex: none;
-  color: var(--coral);
+  color: var(--folder-color, var(--coral));
+  fill: color-mix(in srgb, var(--folder-color, var(--coral)) 18%, transparent);
 }
 
 .folder-count {
   color: var(--muted);
   font-size: 9px;
   font-variant-numeric: tabular-nums;
+}
+
+.folder-color-button {
+  color: var(--folder-color, var(--coral));
+}
+
+.folder-color-palette {
+  display: grid;
+  padding: 9px 8px 8px;
+  border-top: 1px solid var(--line);
+  grid-column: 1 / -1;
+  grid-template-columns: repeat(12, 1fr);
+  gap: 6px;
+}
+
+.folder-color-swatch {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 2px solid transparent;
+  border-radius: 5px;
+  background: var(--swatch);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 16%, transparent);
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease;
+}
+
+.folder-color-swatch:hover {
+  transform: scale(1.1);
+}
+
+.folder-color-swatch.is-selected {
+  border-color: var(--surface);
+  box-shadow: 0 0 0 2px var(--ink);
 }
 
 .shortcut-grid {

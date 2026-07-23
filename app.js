@@ -19,10 +19,24 @@
     { id: "sakura", name: "Sakura", description: "淡い桜色", colors: ["#f8ecef", "#382b31", "#c95078"] },
     { id: "solarized", name: "Solarized", description: "低コントラスト", colors: ["#fdf6e3", "#073642", "#cb4b16"] },
   ];
+  const folderColors = [
+    { value: "#e7644b", name: "コーラル" },
+    { value: "#d98b3e", name: "オレンジ" },
+    { value: "#c5a332", name: "イエロー" },
+    { value: "#629167", name: "グリーン" },
+    { value: "#3e9183", name: "ティール" },
+    { value: "#3d91a8", name: "シアン" },
+    { value: "#4f7596", name: "ブルー" },
+    { value: "#626ca8", name: "インディゴ" },
+    { value: "#8765a6", name: "パープル" },
+    { value: "#c05f87", name: "ピンク" },
+    { value: "#906c52", name: "ブラウン" },
+    { value: "#747b81", name: "グレー" },
+  ];
   const defaultFolders = [
-    { id: "folder-inbox", name: "受信トレイ" },
-    { id: "folder-work", name: "仕事" },
-    { id: "folder-personal", name: "個人" },
+    { id: "folder-inbox", name: "受信トレイ", color: "#e7644b" },
+    { id: "folder-work", name: "仕事", color: "#4f7596" },
+    { id: "folder-personal", name: "個人", color: "#629167" },
   ];
 
   const starterNotes = [
@@ -97,6 +111,7 @@ localStorage.setItem("note", idea);
       ? document.documentElement.dataset.theme
       : "paper",
     draggedNoteId: null,
+    colorPickerFolderId: null,
     saveTimer: null,
     lastEscapeAt: 0,
   };
@@ -198,7 +213,15 @@ localStorage.setItem("note", idea);
     try {
       const saved = JSON.parse(localStorage.getItem(FOLDERS_KEY) || "[]");
       const valid = Array.isArray(saved)
-        ? saved.filter((folder) => folder?.id && folder?.name?.trim())
+        ? saved
+            .filter((folder) => folder?.id && folder?.name?.trim())
+            .map((folder, index) => ({
+              id: folder.id,
+              name: folder.name.trim(),
+              color: isFolderColor(folder.color)
+                ? folder.color
+                : folderColors[index % folderColors.length].value,
+            }))
         : [];
       return valid.length ? valid : defaultFolders.map((folder) => ({ ...folder }));
     } catch {
@@ -213,7 +236,11 @@ localStorage.setItem("note", idea);
         const legacyName = note.tags?.[0]?.trim() || "受信トレイ";
         let folder = state.folders.find((item) => item.name === legacyName);
         if (!folder) {
-          folder = { id: crypto.randomUUID(), name: legacyName };
+          folder = {
+            id: crypto.randomUUID(),
+            name: legacyName,
+            color: folderColors[state.folders.length % folderColors.length].value,
+          };
           state.folders.push(folder);
         }
         note.folderId = folder.id;
@@ -243,6 +270,10 @@ localStorage.setItem("note", idea);
       toast("保存容量が不足しています");
       console.error(error);
     }
+  }
+
+  function isFolderColor(value) {
+    return folderColors.some((color) => color.value === value);
   }
 
   function setSavedState(saved) {
@@ -520,6 +551,7 @@ localStorage.setItem("note", idea);
           const button = document.createElement("button");
           button.type = "button";
           button.className = `nav-item${state.folderFilter === folder.id ? " is-active" : ""}`;
+          button.style.setProperty("--folder-color", folder.color);
           button.setAttribute("aria-label", `${folder.name}、${folder.count}件。ノートをドロップして移動`);
           button.innerHTML = `
             <span class="flex min-w-0 items-center gap-3">
@@ -579,7 +611,7 @@ localStorage.setItem("note", idea);
             <time class="note-date">${formatListDate(note.updatedAt)}</time>
           </div>
           <p class="note-excerpt">${escapeHtml(plainExcerpt(note.content))}</p>
-          ${folder ? `<span class="note-folder"><i data-lucide="folder" aria-hidden="true"></i>${escapeHtml(folder.name)}</span>` : ""}
+          ${folder ? `<span class="note-folder" style="--folder-color:${folder.color}"><i data-lucide="folder" aria-hidden="true"></i>${escapeHtml(folder.name)}</span>` : ""}
         `;
         card.addEventListener("click", () => selectNote(note.id));
         card.addEventListener("dragstart", (event) => {
@@ -643,6 +675,7 @@ localStorage.setItem("note", idea);
     const button = document.createElement("button");
     button.type = "button";
     button.className = "folder-chip";
+    button.style.setProperty("--folder-color", folder?.color || "var(--coral)");
     button.innerHTML = `
       <i data-lucide="folder" aria-hidden="true"></i>
       <span>${escapeHtml(folder?.name || "フォルダを選択")}</span>
@@ -678,6 +711,7 @@ localStorage.setItem("note", idea);
   }
 
   function openFolderDialog() {
+    state.colorPickerFolderId = null;
     renderEditableFolders();
     el.folderDialog.showModal();
     setTimeout(() => el.folderInput.focus(), 0);
@@ -690,21 +724,51 @@ localStorage.setItem("note", idea);
         const count = state.notes.filter((item) => item.folderId === folder.id).length;
         const row = document.createElement("div");
         row.className = `folder-manager-row${note?.folderId === folder.id ? " is-current" : ""}`;
+        row.style.setProperty("--folder-color", folder.color);
+        const palette = folderColors
+          .map(
+            (color) => `
+              <button
+                class="folder-color-swatch${folder.color === color.value ? " is-selected" : ""}"
+                type="button"
+                data-color="${color.value}"
+                style="--swatch:${color.value}"
+                aria-label="${color.name}"
+                title="${color.name}"
+              ></button>`,
+          )
+          .join("");
         row.innerHTML = `
           <button class="folder-select" type="button" ${note ? "" : "disabled"}>
             <i data-lucide="${note?.folderId === folder.id ? "folder-check" : "folder"}" aria-hidden="true"></i>
             <span class="min-w-0 flex-1 truncate text-left">${escapeHtml(folder.name)}</span>
             <span class="folder-count">${count}</span>
           </button>
+          <button class="mini-icon-button folder-color-button" type="button" aria-label="${escapeHtml(folder.name)}の色を変更" data-tooltip="カラー">
+            <i data-lucide="palette" aria-hidden="true"></i>
+          </button>
           <button class="mini-icon-button rename-folder" type="button" aria-label="${escapeHtml(folder.name)}の名前を変更" data-tooltip="名前を変更">
             <i data-lucide="pencil" aria-hidden="true"></i>
           </button>
           <button class="mini-icon-button delete-folder danger-hover" type="button" aria-label="${escapeHtml(folder.name)}を削除" data-tooltip="フォルダを削除">
             <i data-lucide="trash-2" aria-hidden="true"></i>
-          </button>`;
+          </button>
+          ${
+            state.colorPickerFolderId === folder.id
+              ? `<div class="folder-color-palette" role="group" aria-label="${escapeHtml(folder.name)}のカラーパレット">${palette}</div>`
+              : ""
+          }`;
         row.querySelector(".folder-select").addEventListener("click", () => {
           moveActiveToFolder(folder.id);
           renderEditableFolders();
+        });
+        row.querySelector(".folder-color-button").addEventListener("click", () => {
+          state.colorPickerFolderId =
+            state.colorPickerFolderId === folder.id ? null : folder.id;
+          renderEditableFolders();
+        });
+        row.querySelectorAll(".folder-color-swatch").forEach((swatch) => {
+          swatch.addEventListener("click", () => updateFolderColor(folder.id, swatch.dataset.color));
         });
         row.querySelector(".rename-folder").addEventListener("click", () => renameFolder(folder.id));
         row.querySelector(".delete-folder").addEventListener("click", () => deleteFolder(folder.id));
@@ -721,7 +785,11 @@ localStorage.setItem("note", idea);
       toast("同じ名前のフォルダがあります");
       return;
     }
-    const folder = { id: crypto.randomUUID(), name };
+    const folder = {
+      id: crypto.randomUUID(),
+      name,
+      color: folderColors[state.folders.length % folderColors.length].value,
+    };
     state.folders.push(folder);
     const note = getActiveNote();
     if (note) {
@@ -739,6 +807,19 @@ localStorage.setItem("note", idea);
 
   function moveActiveToFolder(folderId) {
     moveNoteToFolder(state.activeId, folderId, true);
+  }
+
+  function updateFolderColor(folderId, color) {
+    const folder = getFolder(folderId);
+    if (!folder || !isFolderColor(color) || folder.color === color) return;
+    folder.color = color;
+    persist();
+    renderNavigation();
+    renderNoteList();
+    const note = getActiveNote();
+    if (note) renderFolderChip(note);
+    renderEditableFolders();
+    toast(`「${folder.name}」のカラーを変更しました`);
   }
 
   function moveNoteToFolder(noteId, folderId, followFolder = false) {
@@ -806,6 +887,7 @@ localStorage.setItem("note", idea);
       if (note.folderId === folderId) note.folderId = fallback.id;
     });
     state.folders = state.folders.filter((item) => item.id !== folderId);
+    if (state.colorPickerFolderId === folderId) state.colorPickerFolderId = null;
     if (state.folderFilter === folderId) state.folderFilter = null;
     persist();
     renderNavigation();
