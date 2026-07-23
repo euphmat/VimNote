@@ -13,12 +13,18 @@
     <script>
       (() => {
         let savedTheme = "paper";
+        let sidebarState = "expanded";
         try {
           savedTheme = localStorage.getItem("vimnote.theme.v1") || "paper";
+          sidebarState =
+            localStorage.getItem("vimnote.sidebar-collapsed.v1") === "true"
+              ? "collapsed"
+              : "expanded";
         } catch {
           // Storage may be unavailable in a privacy-restricted browser.
         }
         document.documentElement.dataset.theme = savedTheme;
+        document.documentElement.dataset.sidebar = sidebarState;
       })();
     </script>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -65,13 +71,14 @@
       >
         <div class="flex min-w-0 items-center gap-3">
           <button
-            id="mobile-menu-button"
-            class="icon-button md:hidden"
+            id="sidebar-toggle-button"
+            class="icon-button"
             type="button"
-            aria-label="メニューを開く"
-            data-tooltip="メニュー"
+            aria-label="サイドバーを非表示"
+            aria-expanded="true"
+            data-tooltip="サイドバーを隠す"
           >
-            <i data-lucide="panel-left" aria-hidden="true"></i>
+            <i data-lucide="panel-left-close" aria-hidden="true"></i>
           </button>
           <div class="brand-mark" aria-hidden="true">V</div>
           <div class="min-w-0">
@@ -309,6 +316,7 @@
         <span><kbd>Esc Esc</kbd> 検索ハイライト解除</span>
         <span><kbd>⌘ K</kbd> メモ検索</span>
         <span><kbd>⌘ N</kbd> 新しいメモ</span>
+        <span><kbd>⌘ B</kbd> サイドバー切替</span>
         <span><kbd>⌘ ⇧ P</kbd> プレビュー切替</span>
       </div>
       <p class="dialog-note">

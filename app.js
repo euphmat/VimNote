@@ -5,6 +5,7 @@
   const ACTIVE_KEY = "vimnote.active.v1";
   const THEME_KEY = "vimnote.theme.v1";
   const FOLDERS_KEY = "vimnote.folders.v1";
+  const SIDEBAR_KEY = "vimnote.sidebar-collapsed.v1";
   const encoder = new TextEncoder();
   const themes = [
     { id: "paper", name: "Paper", description: "やわらかな紙", colors: ["#f5f1e8", "#252421", "#e7644b"] },
@@ -91,6 +92,7 @@ localStorage.setItem("note", idea);
     query: "",
     sortAscending: false,
     view: "edit",
+    sidebarCollapsed: document.documentElement.dataset.sidebar === "collapsed",
     theme: themes.some((theme) => theme.id === document.documentElement.dataset.theme)
       ? document.documentElement.dataset.theme
       : "paper",
@@ -121,6 +123,7 @@ localStorage.setItem("note", idea);
     wordCount: document.querySelector("#word-count"),
     syncState: document.querySelector("#sync-state"),
     navigation: document.querySelector("#navigation"),
+    sidebarToggle: document.querySelector("#sidebar-toggle-button"),
     backdrop: document.querySelector("#mobile-backdrop"),
     editorPanel: document.querySelector("#editor-panel"),
     shortcutsDialog: document.querySelector("#shortcuts-dialog"),
@@ -368,6 +371,7 @@ localStorage.setItem("note", idea);
 
   function render() {
     applyTheme(state.theme, false);
+    syncSidebar();
     renderNavigation();
     renderNoteList();
     loadActiveNote();
@@ -754,11 +758,53 @@ localStorage.setItem("note", idea);
   function openMobileMenu() {
     el.navigation.classList.add("is-open");
     el.backdrop.classList.remove("hidden");
+    syncSidebar();
   }
 
   function closeMobileMenu() {
     el.navigation.classList.remove("is-open");
     el.backdrop.classList.add("hidden");
+    syncSidebar();
+  }
+
+  function toggleSidebar() {
+    if (window.innerWidth <= 820) {
+      if (el.navigation.classList.contains("is-open")) {
+        closeMobileMenu();
+      } else {
+        openMobileMenu();
+      }
+      return;
+    }
+    state.sidebarCollapsed = !state.sidebarCollapsed;
+    document.documentElement.dataset.sidebar = state.sidebarCollapsed
+      ? "collapsed"
+      : "expanded";
+    try {
+      localStorage.setItem(SIDEBAR_KEY, String(state.sidebarCollapsed));
+    } catch {
+      // Keep the current-session state when storage is unavailable.
+    }
+    syncSidebar();
+  }
+
+  function syncSidebar() {
+    const mobile = window.innerWidth <= 820;
+    const collapsed = mobile
+      ? !el.navigation.classList.contains("is-open")
+      : state.sidebarCollapsed;
+    el.sidebarToggle.setAttribute("aria-expanded", String(!collapsed));
+    el.sidebarToggle.setAttribute(
+      "aria-label",
+      collapsed ? "サイドバーを表示" : "サイドバーを非表示",
+    );
+    el.sidebarToggle.dataset.tooltip = collapsed
+      ? "サイドバーを表示"
+      : "サイドバーを隠す";
+    el.sidebarToggle.innerHTML = `<i data-lucide="${
+      collapsed ? "panel-left-open" : "panel-left-close"
+    }" aria-hidden="true"></i>`;
+    lucide.createIcons();
   }
 
   function openEditorOnMobile() {
@@ -823,7 +869,7 @@ localStorage.setItem("note", idea);
     .querySelectorAll("#new-note-button-header, #new-note-button-empty")
     .forEach((button) => button.addEventListener("click", createNote));
 
-  document.querySelector("#mobile-menu-button").addEventListener("click", openMobileMenu);
+  el.sidebarToggle.addEventListener("click", toggleSidebar);
   el.backdrop.addEventListener("click", closeMobileMenu);
   el.pin.addEventListener("click", togglePin);
   el.remove.addEventListener("click", deleteActiveNote);
@@ -870,6 +916,10 @@ localStorage.setItem("note", idea);
       event.preventDefault();
       createNote();
     }
+    if (modifier && event.key.toLowerCase() === "b") {
+      event.preventDefault();
+      toggleSidebar();
+    }
     if (modifier && event.shiftKey && event.key.toLowerCase() === "p") {
       event.preventDefault();
       setView(state.view === "edit" ? "preview" : "edit");
@@ -888,6 +938,13 @@ localStorage.setItem("note", idea);
   });
 
   window.addEventListener("beforeunload", saveActiveNow);
+  window.addEventListener("resize", () => {
+    if (window.innerWidth > 820) {
+      el.navigation.classList.remove("is-open");
+      el.backdrop.classList.add("hidden");
+    }
+    syncSidebar();
+  });
   window.addEventListener("storage", (event) => {
     if (![STORAGE_KEY, FOLDERS_KEY].includes(event.key)) return;
     state.notes = loadNotes();
