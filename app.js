@@ -60,6 +60,7 @@
       ? document.documentElement.dataset.theme
       : "paper",
     draggedNoteId: null,
+    draggedFolderId: null,
     colorPickerFolderId: null,
     renamingFolderId: null,
     deletingFolderId: null,
@@ -707,6 +708,7 @@
 
           const button = document.createElement("button");
           button.type = "button";
+          button.draggable = true;
           button.className = `nav-item folder-nav-item${
             state.folderFilter === folder.id ? " is-active" : ""
           }`;
@@ -715,7 +717,7 @@
             "aria-label",
             `${folder.name}, ${folder.count} ${
               folder.count === 1 ? "note" : "notes"
-            }. Drop a note here to move it`,
+            }. Drag to move this folder. Drop a note or folder here to move it`,
           );
           button.innerHTML = `
             <span class="folder-tree-label">
@@ -760,6 +762,53 @@
             event.stopPropagation();
             openFolderContextMenu(folder.id, event.clientX, event.clientY);
           });
+          button.addEventListener("dragstart", (event) => {
+            closeFolderContextMenu();
+            closeNoteContextMenu();
+            state.draggedFolderId = folder.id;
+            event.dataTransfer.effectAllowed = "move";
+            event.dataTransfer.setData("application/x-vimnote-folder", folder.id);
+            event.dataTransfer.setData("text/plain", `folder:${folder.id}`);
+            document.documentElement.classList.add("is-folder-dragging");
+            requestAnimationFrame(() => row.classList.add("is-folder-dragging-source"));
+          });
+          button.addEventListener("dragend", cleanupFolderDrag);
+          row.addEventListener("dragenter", (event) => {
+            if (!state.draggedFolderId) return;
+            event.preventDefault();
+            const invalid = Boolean(
+              folderMoveError(state.draggedFolderId, folder.id),
+            );
+            row.classList.toggle("is-folder-drop-target", !invalid);
+            row.classList.toggle("is-folder-drop-invalid", invalid);
+          });
+          row.addEventListener("dragover", (event) => {
+            if (!state.draggedFolderId) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const invalid = Boolean(
+              folderMoveError(state.draggedFolderId, folder.id),
+            );
+            event.dataTransfer.dropEffect = invalid ? "none" : "move";
+            row.classList.toggle("is-folder-drop-target", !invalid);
+            row.classList.toggle("is-folder-drop-invalid", invalid);
+          });
+          row.addEventListener("dragleave", (event) => {
+            if (!row.contains(event.relatedTarget)) {
+              row.classList.remove(
+                "is-folder-drop-target",
+                "is-folder-drop-invalid",
+              );
+            }
+          });
+          row.addEventListener("drop", (event) => {
+            if (!state.draggedFolderId) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const folderId = state.draggedFolderId;
+            cleanupFolderDrag();
+            moveFolderToParent(folderId, folder.id);
+          });
           button.addEventListener("dragenter", (event) => {
             if (!state.draggedNoteId) return;
             event.preventDefault();
@@ -777,6 +826,7 @@
             }
           });
           button.addEventListener("drop", (event) => {
+            if (!state.draggedNoteId) return;
             event.preventDefault();
             const noteId = state.draggedNoteId || event.dataTransfer.getData("text/plain");
             cleanupNoteDrag();
@@ -1183,6 +1233,69 @@
     renderNoteList();
     if (note.id === state.activeId) renderFolderChip(note);
     toast(`Moved “${displayTitle(note)}” to “${folder.name}”`);
+  }
+
+  function folderMoveError(folderId, parentId) {
+    const folder = getFolder(folderId);
+    const parent = parentId ? getFolder(parentId) : null;
+    if (!folder || (parentId && !parent)) return "Folder not found";
+    if (folder.parentId === (parent?.id || null)) {
+      return parent ? `“${folder.name}” is already in “${parent.name}”` : "Folder is already at root";
+    }
+    if (parent && getFolderTreeIds(folder.id).has(parent.id)) {
+      return "A folder cannot be moved into itself or its subfolders";
+    }
+    const duplicate = state.folders.some(
+      (item) =>
+        item.id !== folder.id &&
+        item.parentId === (parent?.id || null) &&
+        item.name.toLocaleLowerCase("en-US") ===
+          folder.name.toLocaleLowerCase("en-US"),
+    );
+    if (duplicate) {
+      return `“${parent?.name || "Folders"}” already contains “${folder.name}”`;
+    }
+    return "";
+  }
+
+  function moveFolderToParent(folderId, parentId = null) {
+    const folder = getFolder(folderId);
+    if (!folder) return;
+    const error = folderMoveError(folderId, parentId);
+    if (error) {
+      toast(error);
+      return;
+    }
+    const parent = parentId ? getFolder(parentId) : null;
+    folder.parentId = parent?.id || null;
+    if (parent) state.collapsedFolderIds.delete(parent.id);
+    persistCollapsedFolders();
+    persist();
+    renderNavigation();
+    renderEditableFolders();
+    lucide.createIcons();
+    toast(
+      parent
+        ? `Moved “${folder.name}” into “${parent.name}”`
+        : `Moved “${folder.name}” to root`,
+    );
+  }
+
+  function cleanupFolderDrag() {
+    state.draggedFolderId = null;
+    document.documentElement.classList.remove("is-folder-dragging");
+    document
+      .querySelectorAll(
+        ".is-folder-dragging-source, .is-folder-drop-target, .is-folder-drop-invalid, .is-root-drop-target",
+      )
+      .forEach((element) =>
+        element.classList.remove(
+          "is-folder-dragging-source",
+          "is-folder-drop-target",
+          "is-folder-drop-invalid",
+          "is-root-drop-target",
+        ),
+      );
   }
 
   function cleanupNoteDrag() {
@@ -1916,6 +2029,35 @@
     event.preventDefault();
     openFolderContextMenu(null, event.clientX, event.clientY);
   });
+  el.folderList.addEventListener("dragover", (event) => {
+    if (
+      !state.draggedFolderId ||
+      event.target.closest(".folder-tree-row")
+    ) {
+      return;
+    }
+    event.preventDefault();
+    const invalid = Boolean(folderMoveError(state.draggedFolderId, null));
+    event.dataTransfer.dropEffect = invalid ? "none" : "move";
+    el.folderList.classList.toggle("is-root-drop-target", !invalid);
+  });
+  el.folderList.addEventListener("dragleave", (event) => {
+    if (!el.folderList.contains(event.relatedTarget)) {
+      el.folderList.classList.remove("is-root-drop-target");
+    }
+  });
+  el.folderList.addEventListener("drop", (event) => {
+    if (
+      !state.draggedFolderId ||
+      event.target.closest(".folder-tree-row")
+    ) {
+      return;
+    }
+    event.preventDefault();
+    const folderId = state.draggedFolderId;
+    cleanupFolderDrag();
+    moveFolderToParent(folderId, null);
+  });
   el.editableFolders.addEventListener("contextmenu", (event) => {
     if (event.target.closest(".folder-manager-row")) return;
     event.preventDefault();
@@ -1945,6 +2087,39 @@
       : "Recently updated";
     renderNoteList();
   });
+
+  document.addEventListener(
+    "keydown",
+    (event) => {
+      if (
+        event.key !== "Backspace" ||
+        !event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.shiftKey ||
+        !getActiveNote() ||
+        document.querySelector("dialog[open]") ||
+        !el.folderContextMenu.classList.contains("hidden") ||
+        !el.noteContextMenu.classList.contains("hidden")
+      ) {
+        return;
+      }
+      const target = event.target instanceof Element ? event.target : null;
+      const isTextField = target?.closest(
+        'input, textarea, [contenteditable="true"]',
+      );
+      const isEditor = target
+        ? editor.getWrapperElement().contains(target)
+        : false;
+      if (isTextField && !isEditor) return;
+      event.preventDefault();
+      event.stopPropagation();
+      closeNoteContextMenu();
+      closeFolderContextMenu();
+      openDeleteNoteDialog();
+    },
+    true,
+  );
 
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape" && !el.folderContextMenu.classList.contains("hidden")) {

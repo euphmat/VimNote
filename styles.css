@@ -700,6 +700,14 @@ input:focus-visible,
     transform 140ms ease;
 }
 
+.folder-nav-item[draggable="true"] {
+  cursor: grab;
+}
+
+.folder-nav-item[draggable="true"]:active {
+  cursor: grabbing;
+}
+
 .folder-nav-item:hover {
   background: color-mix(in srgb, var(--folder-color) 7%, var(--paper-deep));
   transform: translateX(1px);
@@ -746,6 +754,49 @@ input:focus-visible,
   content: "";
   opacity: 0.66;
   transform: translateY(-50%);
+}
+
+.folder-tree-row.is-folder-dragging-source {
+  opacity: 0.4;
+}
+
+.folder-tree-row.is-folder-drop-target .folder-nav-item {
+  background: color-mix(in srgb, var(--folder-color) 15%, var(--surface));
+  box-shadow:
+    inset 0 0 0 1px color-mix(in srgb, var(--folder-color) 55%, var(--line)),
+    0 4px 12px color-mix(in srgb, var(--folder-color) 15%, transparent);
+  transform: translateX(2px) scale(1.01);
+}
+
+.folder-tree-row.is-folder-drop-invalid .folder-nav-item {
+  background: var(--danger-soft);
+  color: var(--danger);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--danger) 48%, var(--line));
+}
+
+:root.is-folder-dragging .folder-tree::after {
+  display: flex;
+  min-height: 30px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  margin: 5px 2px 0;
+  border: 1px dashed color-mix(in srgb, var(--muted) 35%, var(--line));
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--paper-deep) 65%, transparent);
+  color: var(--muted);
+  content: "Move to root";
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+:root.is-folder-dragging .folder-tree.is-root-drop-target::after {
+  border-color: color-mix(in srgb, var(--coral) 70%, var(--line));
+  background: var(--coral-soft);
+  color: var(--coral);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--coral) 12%, transparent);
 }
 
 .folder-disclosure {
