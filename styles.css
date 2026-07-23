@@ -356,13 +356,26 @@
 
 html,
 body {
+  width: 100%;
   height: 100%;
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 
 body {
   margin: 0;
   background: var(--paper);
   font-family: var(--font-sarasa);
+}
+
+#app {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+  grid-template-rows: auto minmax(0, 1fr);
 }
 
 button,
@@ -556,7 +569,10 @@ input:focus-visible,
 
 .workspace {
   display: grid;
-  height: calc(100vh - 64px);
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   grid-template-columns: 235px 330px minmax(420px, 1fr);
   transition: grid-template-columns 180ms ease;
 }
@@ -593,6 +609,7 @@ input:focus-visible,
 
 .navigation-panel {
   display: flex;
+  overflow: hidden;
   flex-direction: column;
   border-right: 1px solid var(--line);
   background: var(--paper);
@@ -602,6 +619,13 @@ input:focus-visible,
 
 .nav-section {
   padding: 26px 18px 12px;
+}
+
+.folder-section {
+  display: flex;
+  min-height: 0;
+  overflow: hidden;
+  flex-direction: column;
 }
 
 .section-label {
@@ -686,9 +710,12 @@ input:focus-visible,
 
 .folder-tree {
   display: flex;
-  min-height: 44px;
+  min-height: 0;
+  flex: 1;
   flex-direction: column;
   gap: 2px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 2px 0 8px;
 }
 
@@ -794,6 +821,7 @@ input:focus-visible,
 
 .storage-note {
   display: flex;
+  flex: none;
   gap: 10px;
   margin: 14px;
   padding: 13px;
@@ -839,12 +867,14 @@ input:focus-visible,
 
 .note-browser {
   display: flex;
+  overflow: hidden;
   flex-direction: column;
   border-right: 1px solid var(--line);
   background: var(--browser);
 }
 
 .browser-tools {
+  flex: none;
   padding: 24px 20px 17px;
   border-bottom: 1px solid var(--line);
 }
@@ -898,8 +928,15 @@ input:focus-visible,
 }
 
 .notes-list {
+  min-height: 0;
+  flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 8px;
+}
+
+.notes-list:empty {
+  display: none;
 }
 
 .note-card {
@@ -1081,18 +1118,23 @@ input:focus-visible,
 
 .editor-panel {
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
   background: var(--surface);
 }
 
 .editor-shell {
   display: flex;
   height: 100%;
+  min-height: 0;
+  overflow: hidden;
   flex-direction: column;
 }
 
 .editor-toolbar {
   display: flex;
   min-height: 68px;
+  flex: none;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
@@ -1175,6 +1217,7 @@ input:focus-visible,
 
 .editor-wrap {
   min-height: 0;
+  overflow: hidden;
   flex: 1;
   padding: 30px 26px 12px;
 }
@@ -1191,6 +1234,7 @@ input:focus-visible,
 
 .CodeMirror-scroll {
   padding: 0 16px 0 0;
+  overscroll-behavior: contain;
 }
 
 .CodeMirror-gutters {
@@ -1278,6 +1322,7 @@ input:focus-visible,
   min-height: 0;
   flex: 1;
   overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 0 48px 52px;
   color: var(--editor-ink);
   font-size: 15px;
@@ -1416,6 +1461,7 @@ input:focus-visible,
 }
 
 .editor-status {
+  flex: none;
   display: flex;
   min-height: 35px;
   align-items: center;
@@ -1499,6 +1545,9 @@ input:focus-visible,
 
 .app-dialog {
   width: min(570px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
   padding: 28px;
   border: 1px solid var(--ink);
   border-radius: 14px;
@@ -2125,7 +2174,7 @@ input:focus-visible,
   .workspace {
     position: relative;
     display: block;
-    height: calc(100vh - 58px);
+    height: 100%;
   }
 
   .navigation-panel {
