@@ -23,4 +23,5 @@ python3 -m http.server 4173
 - 保存可能なサイドバー表示状態と `⌘/Ctrl + B` 切り替え
 - Sarasa Term J を全UIとエディターに使用
 - ダークモードを含む10種類の保存可能なカラーテーマ
+- ブランドに合わせた SVG favicon
 - Tailwind CSS を使ったレスポンシブ UI
