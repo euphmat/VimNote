@@ -8,14 +8,29 @@ const CHARACTERS = Object.freeze([
   { id: "reia", name: "蓮見レイア", image: "./Assets/Character/蓮見レイア.JPG" },
   { id: "miria", name: "佐伯ミリア", image: "./Assets/Character/佐伯ミリア.JPG" },
   { id: "hanna", name: "遠野ハンナ", image: "./Assets/Character/遠野ハンナ.JPG" },
-  { id: "gokucho", name: "ゴクチョー", image: "./Assets/Character/ゴクチョー.JPG" },
+  {
+    id: "gokucho",
+    name: "ゴクチョー",
+    group: "staff",
+    image: "./Assets/Character/ゴクチョー.JPG",
+  },
   { id: "sherry", name: "橘シェリー", image: "./Assets/Character/橘シェリー.JPG" },
   { id: "alisa", name: "紫藤アリサ", image: "./Assets/Character/紫藤アリサ.JPG" },
-  { id: "guard", name: "看守", image: "./Assets/Character/看守.JPG" },
+  {
+    id: "guard",
+    name: "看守",
+    group: "staff",
+    image: "./Assets/Character/看守.JPG",
+  },
   { id: "hiro", name: "二階堂ヒロ", image: "./Assets/Character/二階堂ヒロ.JPG" },
   { id: "margo", name: "宝生マーゴ", image: "./Assets/Character/宝生マーゴ.JPG" },
   { id: "noa", name: "城ヶ崎ノア", image: "./Assets/Character/城ヶ崎ノア.JPG" },
   { id: "anan", name: "夏目アンアン", image: "./Assets/Character/夏目アンアン.JPG" },
+]);
+
+const CHARACTER_GROUPS = Object.freeze([
+  { id: "prisoner", label: "囚人", icon: "lock-keyhole" },
+  { id: "staff", label: "施設関係者", icon: "shield" },
 ]);
 
 const MAPS = Object.freeze([
@@ -51,7 +66,6 @@ function defaultCase() {
     title: "第1の事件・捜査記録",
     activeView: "board",
     selectedCharacterId: CHARACTERS[0].id,
-    selectedCharacterTimeId: TIME_SLOTS[0].id,
     selectedMapId: "1f",
     characterFiles: Object.fromEntries(
       CHARACTERS.map((character) => [
@@ -109,11 +123,6 @@ function loadCase() {
       )
         ? saved.selectedCharacterId
         : fallback.selectedCharacterId,
-      selectedCharacterTimeId: TIME_SLOTS.some(
-        (slot) => slot.id === saved.selectedCharacterTimeId,
-      )
-        ? saved.selectedCharacterTimeId
-        : fallback.selectedCharacterTimeId,
       selectedMapId: MAPS.some((map) => map.id === saved.selectedMapId)
         ? saved.selectedMapId
         : fallback.selectedMapId,
@@ -272,38 +281,55 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     el.deceasedCount.textContent = String(deceasedCount);
     el.showDeceased.checked = state.showDeceased;
     el.showDeceased.disabled = deceasedCount === 0;
-    el.characterList.innerHTML = visibleCharacters
-      .map((character) => {
-        const file = data.characterFiles[character.id];
-        const hasDetails = Boolean(file.details.trim());
-        return `
-          <button
-            class="trial-character-row${
-              data.selectedCharacterId === character.id ? " is-active" : ""
-            }${file.isDead ? " is-deceased" : ""}"
-            type="button"
-            data-character-id="${character.id}"
-          >
-            <img src="${character.image}" alt="" />
-            <span class="trial-character-row-copy">
-              <strong>${escapeHtml(character.name)}</strong>
-              <small class="trial-detail-state${
-                hasDetails ? " has-details" : ""
-              }${file.isDead ? " is-deceased" : ""}">
-                <i data-lucide="${
-                  file.isDead
-                    ? "skull"
-                    : hasDetails
-                      ? "file-check-2"
-                      : "file-pen-line"
-                }" aria-hidden="true"></i>
-                ${file.isDead ? "死亡" : hasDetails ? "詳細あり" : "詳細未記入"}
-              </small>
+    el.characterList.innerHTML = CHARACTER_GROUPS.map((group) => {
+      const groupCharacters = visibleCharacters.filter(
+        (character) => (character.group || "prisoner") === group.id,
+      );
+      if (!groupCharacters.length) return "";
+      const rows = groupCharacters
+        .map((character) => {
+          const file = data.characterFiles[character.id];
+          const hasDetails = Boolean(file.details.trim());
+          return `
+            <button
+              class="trial-character-row${
+                data.selectedCharacterId === character.id ? " is-active" : ""
+              }${file.isDead ? " is-deceased" : ""}"
+              type="button"
+              data-character-id="${character.id}"
+            >
+              <img src="${character.image}" alt="" />
+              <span class="trial-character-row-copy">
+                <strong>${escapeHtml(character.name)}</strong>
+                <small class="trial-detail-state${
+                  hasDetails ? " has-details" : ""
+                }${file.isDead ? " is-deceased" : ""}">
+                  <i data-lucide="${
+                    file.isDead
+                      ? "skull"
+                      : hasDetails
+                        ? "file-check-2"
+                        : "file-pen-line"
+                  }" aria-hidden="true"></i>
+                  ${file.isDead ? "死亡" : hasDetails ? "詳細あり" : "詳細未記入"}
+                </small>
+              </span>
+              <i data-lucide="chevron-right" aria-hidden="true"></i>
+            </button>`;
+        })
+        .join("");
+      return `
+        <section class="trial-character-group is-${group.id}" aria-label="${group.label}">
+          <div class="trial-character-group-heading">
+            <span>
+              <i data-lucide="${group.icon}" aria-hidden="true"></i>
+              ${group.label}
             </span>
-            <i data-lucide="chevron-right" aria-hidden="true"></i>
-          </button>`;
-      })
-      .join("");
+            <small>${groupCharacters.length}</small>
+          </div>
+          ${rows}
+        </section>`;
+    }).join("");
     if (!visibleCharacters.length) {
       el.characterList.innerHTML = `
         <div class="trial-no-results">
@@ -348,9 +374,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
   function renderBoard() {
     const character = findCharacter(data.selectedCharacterId);
     const file = data.characterFiles[character.id];
-    const characterTimeSlot =
-      TIME_SLOTS.find((slot) => slot.id === data.selectedCharacterTimeId) ||
-      TIME_SLOTS[0];
     const recordedTimeCount = TIME_SLOTS.filter(
       (slot) => file.timeNotes[slot.id].trim(),
     ).length;
@@ -415,53 +438,38 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
               placeholder="${escapeHtml(character.name)}について分かったことを詳しく記録…"
             >${escapeHtml(file.details)}</textarea>
             <div class="trial-character-time-heading">
-              <label class="trial-field-label" for="trial-character-note">
+              <div class="trial-field-label">
                 供述・アリバイ
-                <span>時間帯ごとの行動記録</span>
-              </label>
+                <span>24時間の行動記録をまとめて表示</span>
+              </div>
               <span id="trial-character-time-count" class="trial-character-time-count">
                 <i data-lucide="clock-3" aria-hidden="true"></i>
                 ${recordedTimeCount} / ${TIME_SLOTS.length} 時間帯
               </span>
             </div>
             <div
-              class="trial-character-time-tabs"
-              role="tablist"
-              aria-label="${escapeHtml(character.name)}の時間帯"
+              class="trial-character-time-list"
+              aria-label="${escapeHtml(character.name)}の24時間の供述・アリバイ"
             >
-              ${TIME_SLOTS.map((slot) => {
-                const value = file.timeNotes[slot.id];
-                return `
-                  <button
-                    class="${
-                      slot.id === characterTimeSlot.id ? "is-active" : ""
-                    }${value.trim() ? " has-note" : ""}"
-                    type="button"
-                    role="tab"
-                    aria-selected="${
-                      slot.id === characterTimeSlot.id ? "true" : "false"
-                    }"
-                    data-character-time-id="${slot.id}"
-                  >
-                    <strong>${slot.time}</strong>
-                    <small>${slot.label}</small>
-                    <i aria-hidden="true"></i>
-                  </button>`;
-              }).join("")}
+              ${TIME_SLOTS.map(
+                (slot) => `
+                  <label class="trial-character-time-row">
+                    <span class="trial-character-time-context">
+                      <strong>${slot.time}</strong>
+                      <span>
+                        <b>${slot.label}</b>
+                        <small>${slot.note}</small>
+                      </span>
+                    </span>
+                    <textarea
+                      class="trial-dossier-note"
+                      data-character-time-id="${slot.id}"
+                      maxlength="5000"
+                      placeholder="${escapeHtml(character.name)}が${slot.time}に、どこで何をしていたか…"
+                    >${escapeHtml(file.timeNotes[slot.id])}</textarea>
+                  </label>`,
+              ).join("")}
             </div>
-            <div class="trial-character-time-context">
-              <span>${characterTimeSlot.time}</span>
-              <div>
-                <strong>${characterTimeSlot.label}</strong>
-                <small>${characterTimeSlot.note}</small>
-              </div>
-            </div>
-            <textarea
-              id="trial-character-note"
-              class="trial-dossier-note"
-              maxlength="5000"
-              placeholder="${escapeHtml(character.name)}が${characterTimeSlot.time}に、どこで何をしていたか…"
-            >${escapeHtml(file.timeNotes[characterTimeSlot.id])}</textarea>
             <div class="trial-dossier-foot">
               <span><i data-lucide="shield-alert" aria-hidden="true"></i>事実と推測を分けて記録</span>
             </div>
@@ -488,17 +496,9 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
             : `${character.name}を人物一覧に戻しました`,
         );
       });
-    el.view
-      .querySelector("#trial-character-note")
-      .addEventListener("input", (event) => {
-        file.timeNotes[characterTimeSlot.id] = event.target.value;
-        const activeTimeButton = el.view.querySelector(
-          `[data-character-time-id="${characterTimeSlot.id}"]`,
-        );
-        activeTimeButton?.classList.toggle(
-          "has-note",
-          Boolean(event.target.value.trim()),
-        );
+    el.view.querySelectorAll("[data-character-time-id]").forEach((textarea) => {
+      textarea.addEventListener("input", (event) => {
+        file.timeNotes[textarea.dataset.characterTimeId] = event.target.value;
         const timeCount = TIME_SLOTS.filter(
           (slot) => file.timeNotes[slot.id].trim(),
         ).length;
@@ -510,12 +510,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           iconRefresh();
         }
         schedulePersist();
-      });
-    el.view.querySelectorAll("[data-character-time-id]").forEach((button) => {
-      button.addEventListener("click", () => {
-        data.selectedCharacterTimeId = button.dataset.characterTimeId;
-        persist();
-        renderBoard();
       });
     });
   }
