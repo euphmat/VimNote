@@ -417,6 +417,14 @@
               </div>
             </div>
             <div class="trial-header-actions">
+              <button id="trial-map-button" class="trial-secondary-button" type="button">
+                <i data-lucide="map" aria-hidden="true"></i>
+                <span>屋敷マップ</span>
+              </button>
+              <button id="trial-rules-button" class="trial-secondary-button" type="button">
+                <i data-lucide="scroll-text" aria-hidden="true"></i>
+                <span>規則</span>
+              </button>
               <button id="trial-export-button" class="trial-secondary-button" type="button">
                 <i data-lucide="download" aria-hidden="true"></i>
                 <span>記録を書き出す</span>
@@ -428,9 +436,6 @@
             <button class="is-active" data-trial-view="board" type="button">
               <i data-lucide="scan-search" aria-hidden="true"></i>推理ボード
             </button>
-            <button data-trial-view="map" type="button">
-              <i data-lucide="map" aria-hidden="true"></i>屋敷マップ
-            </button>
             <button data-trial-view="reference" type="button">
               <i data-lucide="book-open-text" aria-hidden="true"></i>裁判資料
             </button>
@@ -438,6 +443,59 @@
 
           <div id="trial-view" class="trial-view"></div>
         </section>
+
+        <dialog
+          id="trial-map-dialog"
+          class="trial-modal trial-map-dialog"
+          aria-labelledby="trial-map-dialog-title"
+        >
+          <header class="trial-modal-heading">
+            <div>
+              <p class="trial-kicker">PRISON MANOR / LOCATION</p>
+              <h2 id="trial-map-dialog-title">屋敷マップ</h2>
+              <p>現場、移動経路、目撃場所を確認しながら記録できます。</p>
+            </div>
+            <button
+              class="trial-modal-close"
+              data-close-dialog
+              type="button"
+              aria-label="屋敷マップを閉じる"
+            >
+              <i data-lucide="x" aria-hidden="true"></i>
+            </button>
+          </header>
+          <div id="trial-map-dialog-body" class="trial-modal-body"></div>
+        </dialog>
+
+        <dialog
+          id="trial-rules-dialog"
+          class="trial-modal trial-rules-dialog"
+          aria-labelledby="trial-rules-dialog-title"
+        >
+          <header class="trial-modal-heading">
+            <div>
+              <p class="trial-kicker">REFERENCE / REGULATIONS</p>
+              <h2 id="trial-rules-dialog-title">規則.md</h2>
+              <p>牢屋敷で適用される規則と時間割の全文です。</p>
+            </div>
+            <button
+              class="trial-modal-close"
+              data-close-dialog
+              type="button"
+              aria-label="規則を閉じる"
+            >
+              <i data-lucide="x" aria-hidden="true"></i>
+            </button>
+          </header>
+          <div class="trial-modal-body trial-rules-scroll">
+            <article id="trial-rules-content" class="trial-rules-content" aria-live="polite">
+              <div class="trial-modal-loading">
+                <i data-lucide="loader-circle" aria-hidden="true"></i>
+                <span>規則を読み込んでいます</span>
+              </div>
+            </article>
+          </div>
+        </dialog>
       </main>
     </div>
 

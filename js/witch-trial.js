@@ -56,7 +56,8 @@ function defaultCase(title = "事件・捜査記録") {
     activeView: "board",
     selectedCharacterId: initialCharacterId,
     openCharacterIds: [initialCharacterId],
-    splitCharacterId: null,
+    previewCharacterId: initialCharacterId,
+    splitCharacterIds: [],
     selectedMapId: "1f",
     textareaHeights: {},
     characterFiles: Object.fromEntries(
@@ -93,14 +94,30 @@ function normalizeCase(saved, fallback = defaultCase()) {
   if (!openCharacterIds.includes(selectedCharacterId)) {
     openCharacterIds.push(selectedCharacterId);
   }
-  const splitCharacterId =
-    validCharacterIds.has(saved.splitCharacterId) &&
-    saved.splitCharacterId !== selectedCharacterId
-      ? saved.splitCharacterId
+  const previewCharacterId =
+    validCharacterIds.has(saved.previewCharacterId) &&
+    openCharacterIds.includes(saved.previewCharacterId)
+      ? saved.previewCharacterId
       : null;
-  if (splitCharacterId && !openCharacterIds.includes(splitCharacterId)) {
-    openCharacterIds.push(splitCharacterId);
-  }
+  const savedSplitCharacterIds = Array.isArray(saved.splitCharacterIds)
+    ? saved.splitCharacterIds
+    : saved.splitCharacterId
+      ? [saved.splitCharacterId]
+      : [];
+  const splitCharacterIds = [
+    ...new Set(
+      savedSplitCharacterIds.filter(
+        (id) =>
+          validCharacterIds.has(id) &&
+          id !== selectedCharacterId,
+      ),
+    ),
+  ];
+  splitCharacterIds.forEach((characterId) => {
+    if (!openCharacterIds.includes(characterId)) {
+      openCharacterIds.push(characterId);
+    }
+  });
   const characterFiles = { ...fallback.characterFiles };
   CHARACTERS.forEach((character) => {
     const file = saved.characterFiles?.[character.id];
@@ -133,12 +150,13 @@ function normalizeCase(saved, fallback = defaultCase()) {
           ? "事件・捜査記録"
           : saved.title.slice(0, 60)
         : fallback.title,
-    activeView: ["board", "map", "reference"].includes(saved.activeView)
+    activeView: ["board", "reference"].includes(saved.activeView)
       ? saved.activeView
       : fallback.activeView,
     selectedCharacterId,
     openCharacterIds,
-    splitCharacterId,
+    previewCharacterId,
+    splitCharacterIds,
     selectedMapId: MAPS.some((map) => map.id === saved.selectedMapId)
       ? saved.selectedMapId
       : fallback.selectedMapId,
@@ -218,7 +236,10 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     characterQuery: "",
     showDeceased: false,
     saveTimer: null,
+    tabActivationTimer: null,
     textareaResizeObserver: null,
+    rulesHtml: null,
+    rulesPromise: null,
   };
 
   const el = {
@@ -240,6 +261,12 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     saveState: document.querySelector("#trial-save-state"),
     tabs: [...document.querySelectorAll("[data-trial-view]")],
     view: document.querySelector("#trial-view"),
+    mapButton: document.querySelector("#trial-map-button"),
+    mapDialog: document.querySelector("#trial-map-dialog"),
+    mapDialogBody: document.querySelector("#trial-map-dialog-body"),
+    rulesButton: document.querySelector("#trial-rules-button"),
+    rulesDialog: document.querySelector("#trial-rules-dialog"),
+    rulesContent: document.querySelector("#trial-rules-content"),
     exportButton: document.querySelector("#trial-export-button"),
   };
 
@@ -262,7 +289,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       caseBook.activeCaseId = data.id;
       localStorage.setItem(
         STORAGE_KEYS.witchTrialCase,
-        JSON.stringify({ version: 4, ...caseBook }),
+        JSON.stringify({ version: 5, ...caseBook }),
       );
       setSaveState(true);
     } catch (error) {
@@ -283,8 +310,11 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     state.textareaResizeObserver = null;
 
     const textareas = [
-      ...el.view.querySelectorAll("[data-textarea-height-key]"),
-    ];
+      ...el.root.querySelectorAll("[data-textarea-height-key]"),
+    ].filter(
+      (textarea) =>
+        textarea.offsetParent !== null || textarea.closest("dialog[open]"),
+    );
     textareas.forEach((textarea) => {
       const savedHeight =
         data.textareaHeights[textarea.dataset.textareaHeightKey];
@@ -412,6 +442,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
               }${file.isDead ? " is-deceased" : ""}"
               type="button"
               data-character-id="${character.id}"
+              aria-label="${escapeHtml(character.name)}。クリックでプレビュー、ダブルクリックでタブを固定"
               aria-current="${
                 data.selectedCharacterId === character.id ? "true" : "false"
               }"
@@ -462,23 +493,61 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     el.characterList
       .querySelectorAll("[data-character-id]")
       .forEach((button) => {
-        button.addEventListener("click", () => {
-          activateCharacterTab(button.dataset.characterId);
+        button.addEventListener("click", (event) => {
+          if (event.detail > 1) return;
+          queueCharacterTabActivation(button.dataset.characterId);
+        });
+        button.addEventListener("dblclick", (event) => {
+          event.preventDefault();
+          openCharacterTab(button.dataset.characterId, { pinned: true });
         });
       });
     iconRefresh();
   }
 
-  function activateCharacterTab(characterId) {
-    const character = findCharacter(characterId);
+  function queueCharacterTabActivation(characterId) {
+    clearTimeout(state.tabActivationTimer);
+    state.tabActivationTimer = setTimeout(() => {
+      state.tabActivationTimer = null;
+      openCharacterTab(characterId);
+    }, 180);
+  }
+
+  function selectCharacterTab(characterId) {
     const previousCharacterId = data.selectedCharacterId;
+    const splitIndex = data.splitCharacterIds.indexOf(characterId);
+    if (splitIndex >= 0 && previousCharacterId !== characterId) {
+      data.splitCharacterIds[splitIndex] = previousCharacterId;
+      data.splitCharacterIds = [
+        ...new Set(
+          data.splitCharacterIds.filter((id) => id !== characterId),
+        ),
+      ];
+    }
+    data.selectedCharacterId = characterId;
+  }
+
+  function openCharacterTab(characterId, { pinned = false } = {}) {
+    clearTimeout(state.tabActivationTimer);
+    state.tabActivationTimer = null;
+    const character = findCharacter(characterId);
     if (!data.openCharacterIds.includes(character.id)) {
-      data.openCharacterIds.push(character.id);
+      const previewIndex = data.previewCharacterId
+        ? data.openCharacterIds.indexOf(data.previewCharacterId)
+        : -1;
+      if (previewIndex >= 0) {
+        data.splitCharacterIds = data.splitCharacterIds.filter(
+          (id) => id !== data.previewCharacterId,
+        );
+        data.openCharacterIds.splice(previewIndex, 1, character.id);
+      } else {
+        data.openCharacterIds.push(character.id);
+      }
+      data.previewCharacterId = pinned ? null : character.id;
+    } else if (pinned && data.previewCharacterId === character.id) {
+      data.previewCharacterId = null;
     }
-    if (data.splitCharacterId === character.id) {
-      data.splitCharacterId = previousCharacterId;
-    }
-    data.selectedCharacterId = character.id;
+    selectCharacterTab(character.id);
     data.activeView = "board";
     persist();
     render();
@@ -489,34 +558,59 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     const closingIndex = data.openCharacterIds.indexOf(characterId);
     if (closingIndex < 0) return;
     data.openCharacterIds.splice(closingIndex, 1);
-    if (data.splitCharacterId === characterId) {
-      data.splitCharacterId = null;
+    if (data.previewCharacterId === characterId) {
+      data.previewCharacterId = null;
     }
+    data.splitCharacterIds = data.splitCharacterIds.filter(
+      (id) => id !== characterId,
+    );
     if (data.selectedCharacterId === characterId) {
       const nextCharacterId =
-        data.splitCharacterId ||
+        data.splitCharacterIds[0] ||
         data.openCharacterIds[
           Math.min(closingIndex, data.openCharacterIds.length - 1)
         ];
       data.selectedCharacterId = nextCharacterId;
-      if (data.splitCharacterId === nextCharacterId) {
-        data.splitCharacterId = null;
-      }
+      data.splitCharacterIds = data.splitCharacterIds.filter(
+        (id) => id !== nextCharacterId,
+      );
     }
     persist();
     render();
   }
 
-  function toggleCharacterSplit() {
-    if (data.splitCharacterId) {
-      data.splitCharacterId = null;
-    } else {
-      data.splitCharacterId =
-        [...data.openCharacterIds]
-          .reverse()
-          .find((characterId) => characterId !== data.selectedCharacterId) ||
-        null;
+  function addCharacterSplit() {
+    const nextCharacterId = [...data.openCharacterIds]
+      .reverse()
+      .find(
+        (characterId) =>
+          characterId !== data.selectedCharacterId &&
+          !data.splitCharacterIds.includes(characterId),
+      );
+    if (!nextCharacterId) return;
+    data.splitCharacterIds.push(nextCharacterId);
+    if (data.previewCharacterId === nextCharacterId) {
+      data.previewCharacterId = null;
     }
+    persist();
+    renderBoard();
+    renderCharacterList();
+    iconRefresh();
+  }
+
+  function removeCharacterSplit(characterId) {
+    data.splitCharacterIds = data.splitCharacterIds.filter(
+      (id) => id !== characterId,
+    );
+    persist();
+    renderBoard();
+    renderCharacterList();
+    iconRefresh();
+  }
+
+  function closeCharacterSplits() {
+    if (!data.splitCharacterIds.length) return;
+    data.splitCharacterIds = [];
     persist();
     renderBoard();
     renderCharacterList();
@@ -535,9 +629,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     state.textareaResizeObserver?.disconnect();
     state.textareaResizeObserver = null;
     el.view.classList.toggle("is-board", data.activeView === "board");
-    if (data.activeView === "map") {
-      renderMap();
-    } else if (data.activeView === "reference") {
+    if (data.activeView === "reference") {
       renderReference();
     } else {
       renderBoard();
@@ -636,10 +728,17 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
 
   function renderBoard() {
     const primaryCharacter = findCharacter(data.selectedCharacterId);
-    const secondaryCharacter = data.splitCharacterId
-      ? findCharacter(data.splitCharacterId)
-      : null;
+    const splitCharacters = data.splitCharacterIds.map(findCharacter);
+    const paneCharacters = [primaryCharacter, ...splitCharacters];
+    const splitCharacterIdSet = new Set(data.splitCharacterIds);
     const openCharacters = data.openCharacterIds.map(findCharacter);
+    const nextSplitCharacter = [...openCharacters]
+      .reverse()
+      .find(
+        (character) =>
+          character.id !== primaryCharacter.id &&
+          !splitCharacterIdSet.has(character.id),
+      );
     el.view.innerHTML = `
       <div class="trial-board-shell">
         <div class="trial-character-tabs">
@@ -651,11 +750,14 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
             ${openCharacters
               .map((character) => {
                 const isActive = character.id === primaryCharacter.id;
-                const isSecondary = character.id === secondaryCharacter?.id;
+                const isSplitPane = splitCharacterIdSet.has(character.id);
+                const isPreview = character.id === data.previewCharacterId;
                 return `
                   <div class="trial-character-tab-wrap${
                     isActive ? " is-active" : ""
-                  }${isSecondary ? " is-secondary" : ""}">
+                  }${isSplitPane ? " is-secondary" : ""}${
+                    isPreview ? " is-preview" : ""
+                  }">
                     <button
                       class="trial-character-tab"
                       type="button"
@@ -663,11 +765,15 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                       aria-selected="${isActive}"
                       tabindex="${isActive ? "0" : "-1"}"
                       data-character-tab="${character.id}"
+                      aria-label="${escapeHtml(character.name)}${
+                        isPreview ? "、プレビュー。ダブルクリックで固定" : ""
+                      }"
+                      ${isPreview ? 'data-tooltip="ダブルクリックでタブを固定"' : ""}
                     >
                       <img src="${character.image}" alt="" />
                       <span>${escapeHtml(character.name)}</span>
                       ${
-                        isSecondary
+                        isSplitPane
                           ? '<i data-lucide="columns-2" aria-hidden="true"></i>'
                           : ""
                       }
@@ -687,55 +793,83 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           </div>
           <div class="trial-character-tab-actions">
             <button
-              class="trial-split-button${secondaryCharacter ? " is-active" : ""}"
+              class="trial-split-button"
               type="button"
-              data-toggle-character-split
-              aria-pressed="${Boolean(secondaryCharacter)}"
-              aria-label="${
-                secondaryCharacter ? "分割ビューを閉じる" : "分割ビューで表示"
-              }"
+              data-add-character-split
+              aria-label="分割ペインを追加"
               data-tooltip="${
-                openCharacters.length < 2
-                  ? "人物タブを2つ以上開くと分割できます"
-                  : secondaryCharacter
-                    ? "分割ビューを閉じる"
-                    : "分割ビューで表示"
+                nextSplitCharacter
+                  ? `${escapeHtml(nextSplitCharacter.name)}を分割ペインに追加`
+                  : "分割できる人物タブがありません"
               }"
-              ${openCharacters.length < 2 ? "disabled" : ""}
+              ${nextSplitCharacter ? "" : "disabled"}
             >
-              <i data-lucide="columns-2" aria-hidden="true"></i>
-              <span>${secondaryCharacter ? "分割を終了" : "分割表示"}</span>
+              <i data-lucide="columns-3" aria-hidden="true"></i>
+              <span>分割を追加</span>
             </button>
+            ${
+              splitCharacters.length
+                ? `
+                  <button
+                    class="trial-split-button is-active"
+                    type="button"
+                    data-close-character-splits
+                    aria-label="分割表示を終了"
+                    data-tooltip="分割表示を終了"
+                  >
+                    <i data-lucide="panel-top-close" aria-hidden="true"></i>
+                    <span>分割を終了</span>
+                  </button>`
+                : ""
+            }
           </div>
         </div>
-        <div class="trial-dossier-grid${secondaryCharacter ? " is-split" : ""}">
-          <article
-            class="trial-dossier-pane is-primary"
-            aria-label="${escapeHtml(primaryCharacter.name)}の人物ファイル"
-          >
-            <div class="trial-dashboard">
-              ${renderCharacterDossier(primaryCharacter, "primary")}
-            </div>
-          </article>
-          ${
-            secondaryCharacter
-              ? `
+        <div
+          class="trial-dossier-grid${splitCharacters.length ? " is-split" : ""}${
+            paneCharacters.length >= 3 ? " is-multi-split" : ""
+          }"
+          style="--trial-pane-count:${paneCharacters.length}"
+        >
+          ${paneCharacters
+            .map(
+              (character, index) => `
                 <article
-                  class="trial-dossier-pane is-secondary"
-                  aria-label="${escapeHtml(secondaryCharacter.name)}の人物ファイル"
+                  class="trial-dossier-pane${index === 0 ? " is-primary" : " is-secondary"}"
+                  aria-label="${escapeHtml(character.name)}の人物ファイル"
                 >
+                  ${
+                    index > 0
+                      ? `
+                        <div class="trial-dossier-pane-toolbar">
+                          <span>${escapeHtml(character.name)}</span>
+                          <button
+                            type="button"
+                            data-remove-character-split="${character.id}"
+                            aria-label="${escapeHtml(character.name)}の分割ペインを閉じる"
+                            data-tooltip="この分割ペインを閉じる"
+                          >
+                            <i data-lucide="x" aria-hidden="true"></i>
+                          </button>
+                        </div>`
+                      : ""
+                  }
                   <div class="trial-dashboard">
-                    ${renderCharacterDossier(secondaryCharacter, "secondary")}
+                    ${renderCharacterDossier(character, `pane-${index}`)}
                   </div>
-                </article>`
-              : ""
-          }
+                </article>`,
+            )
+            .join("")}
         </div>
       </div>`;
 
     el.view.querySelectorAll("[data-character-tab]").forEach((button) => {
-      button.addEventListener("click", () => {
-        activateCharacterTab(button.dataset.characterTab);
+      button.addEventListener("click", (event) => {
+        if (event.detail > 1) return;
+        queueCharacterTabActivation(button.dataset.characterTab);
+      });
+      button.addEventListener("dblclick", (event) => {
+        event.preventDefault();
+        openCharacterTab(button.dataset.characterTab, { pinned: true });
       });
       button.addEventListener("keydown", (event) => {
         if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
@@ -747,7 +881,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         const nextIndex =
           (currentIndex + direction + data.openCharacterIds.length) %
           data.openCharacterIds.length;
-        activateCharacterTab(data.openCharacterIds[nextIndex]);
+        openCharacterTab(data.openCharacterIds[nextIndex]);
       });
     });
     el.view
@@ -758,8 +892,18 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         });
       });
     el.view
-      .querySelector("[data-toggle-character-split]")
-      .addEventListener("click", toggleCharacterSplit);
+      .querySelector("[data-add-character-split]")
+      .addEventListener("click", addCharacterSplit);
+    el.view
+      .querySelector("[data-close-character-splits]")
+      ?.addEventListener("click", closeCharacterSplits);
+    el.view
+      .querySelectorAll("[data-remove-character-split]")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          removeCharacterSplit(button.dataset.removeCharacterSplit);
+        });
+      });
 
     el.view
       .querySelectorAll("[data-character-field]")
@@ -792,15 +936,15 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     trackTextareaHeights();
   }
 
-  function renderMap() {
+  function renderMapDialog() {
     const map = findMap(data.selectedMapId);
-    el.view.innerHTML = `
-      <div class="trial-content-page">
+    el.mapDialogBody.innerHTML = `
+      <div class="trial-modal-page">
         <div class="trial-page-heading">
           <div>
-            <p class="trial-kicker">PRISON MANOR / LOCATION</p>
-            <h2>屋敷マップ</h2>
-            <p>現場、移動経路、目撃場所をフロアごとに記録します。</p>
+            <p class="trial-kicker">FLOOR SELECT</p>
+            <h3>${map.name} フロア</h3>
+            <p>図面と調査メモは事件ファイルごとに保存されます。</p>
           </div>
           <div class="trial-floor-switch" role="group" aria-label="フロア">
             ${MAPS.map(
@@ -835,18 +979,75 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           </div>
         </div>
       </div>`;
-    el.view.querySelectorAll("[data-map-id]").forEach((button) => {
+    el.mapDialogBody.querySelectorAll("[data-map-id]").forEach((button) => {
       button.addEventListener("click", () => {
         data.selectedMapId = button.dataset.mapId;
         persist();
-        renderMap();
+        renderMapDialog();
       });
     });
-    el.view.querySelector("#trial-map-note").addEventListener("input", (event) => {
-      data.mapNotes[map.id] = event.target.value;
-      schedulePersist();
-    });
-    trackTextareaHeights();
+    el.mapDialogBody
+      .querySelector("#trial-map-note")
+      .addEventListener("input", (event) => {
+        data.mapNotes[map.id] = event.target.value;
+        schedulePersist();
+      });
+    iconRefresh();
+    if (el.mapDialog.open) requestAnimationFrame(trackTextareaHeights);
+  }
+
+  function openMapDialog() {
+    renderMapDialog();
+    el.mapDialog.showModal();
+    requestAnimationFrame(trackTextareaHeights);
+  }
+
+  function renderRulesMarkdown(markdown) {
+    const parsed = window.marked
+      ? window.marked.parse(markdown)
+      : `<pre>${escapeHtml(markdown)}</pre>`;
+    return window.DOMPurify ? window.DOMPurify.sanitize(parsed) : parsed;
+  }
+
+  async function loadRules() {
+    if (state.rulesHtml) {
+      el.rulesContent.innerHTML = state.rulesHtml;
+      return;
+    }
+    if (!state.rulesPromise) {
+      state.rulesPromise = fetch("./Assets/規則.md")
+        .then((response) => {
+          if (!response.ok) throw new Error(`HTTP ${response.status}`);
+          return response.text();
+        })
+        .then((markdown) => {
+          state.rulesHtml = renderRulesMarkdown(markdown);
+          return state.rulesHtml;
+        })
+        .catch((error) => {
+          state.rulesPromise = null;
+          throw error;
+        });
+    }
+    try {
+      el.rulesContent.innerHTML = await state.rulesPromise;
+    } catch (error) {
+      el.rulesContent.innerHTML = `
+        <div class="trial-modal-error">
+          <i data-lucide="triangle-alert" aria-hidden="true"></i>
+          <div>
+            <strong>規則を読み込めませんでした</strong>
+            <p>ページを再読み込みして、もう一度お試しください。</p>
+          </div>
+        </div>`;
+      console.error(error);
+    }
+    iconRefresh();
+  }
+
+  function openRulesDialog() {
+    el.rulesDialog.showModal();
+    loadRules();
   }
 
   function renderReference() {
@@ -874,36 +1075,27 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
               <div><dt>大魔女</dt><dd>ゴクチョーによれば、見つけることで何かが起こる存在。</dd></div>
             </dl>
           </section>
-          <section class="trial-reference-card">
+          <section class="trial-reference-card trial-reference-rules">
             <div class="trial-reference-title">
-              <i data-lucide="scale" aria-hidden="true"></i>
-              <div><p class="trial-kicker">WITCH TRIAL</p><h3>裁判の要点</h3></div>
+              <i data-lucide="scroll-text" aria-hidden="true"></i>
+              <div><p class="trial-kicker">FULL REGULATIONS</p><h3>牢屋敷の規則</h3></div>
             </div>
-            <ol class="trial-rule-list">
-              <li><span>01</span><p><strong>殺人で開廷</strong>屋敷内で殺人が起こると、危険な魔女を処刑する裁判が行われる。</p></li>
-              <li><span>02</span><p><strong>議論と多数決</strong>指定時間内に犯人を議論し、最多票を得た者が魔女として処刑される。</p></li>
-              <li><span>03</span><p><strong>発見後は捜査可能</strong>死体発見から裁判開始まで、拘束を解除され屋敷内を捜査できる。</p></li>
-              <li><span>04</span><p><strong>特定失敗は全員処刑</strong>合理的証拠を伴う全会一致の「犯人なし」を除き、全員が処刑される。</p></li>
-            </ol>
-          </section>
-          <section class="trial-reference-card trial-reference-wide">
-            <div class="trial-reference-title">
-              <i data-lucide="shield" aria-hidden="true"></i>
-              <div><p class="trial-kicker">DAILY RULES</p><h3>検証に使える生活規則</h3></div>
-            </div>
-            <div class="trial-rule-chips">
-              <span>自由時間外は監房</span>
-              <span>看守が全エリアを巡回</span>
-              <span>衣服は毎日ダストシュートへ</span>
-              <span>焼却炉は月曜15時に稼働</span>
-              <span>怪我・体調不良時は医務室可</span>
-              <span>付き添いは1人まで</span>
-              <span>22時から翌6時は外出禁止</span>
-              <span>シャワーは17時から22時</span>
+            <div class="trial-reference-rules-copy">
+              <p>
+                生活規則、見張りの巡回、自由時間、魔女裁判、時間割を
+                <code>規則.md</code> から読み込み、読みやすい全文表示で確認できます。
+              </p>
+              <button type="button" data-open-rules>
+                <i data-lucide="maximize-2" aria-hidden="true"></i>
+                規則をモーダルで開く
+              </button>
             </div>
           </section>
         </div>
       </div>`;
+    el.view
+      .querySelector("[data-open-rules]")
+      .addEventListener("click", openRulesDialog);
   }
 
   function exportCase() {
@@ -1016,6 +1208,9 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       renderView();
     });
   });
+  el.mapButton.addEventListener("click", openMapDialog);
+  el.rulesButton.addEventListener("click", openRulesDialog);
+  el.mapDialog.addEventListener("close", trackTextareaHeights);
   el.exportButton.addEventListener("click", exportCase);
   window.addEventListener("beforeunload", persist);
   window.addEventListener("storage", (event) => {
