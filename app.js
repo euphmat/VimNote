@@ -26,6 +26,7 @@ import {
   loadNotes,
   persistCollapsedFolders,
 } from "./js/storage.js";
+import { createWitchTrialMode } from "./js/witch-trial.js";
 
 const {
   activeNote: ACTIVE_KEY,
@@ -1776,6 +1777,8 @@ const {
   }
 
   // Event wiring -------------------------------------------------------------
+  createWitchTrialMode({ toast });
+
   editor.on("change", () => {
     if (editor._loadingNote) return;
     scheduleSave();
@@ -1917,6 +1920,7 @@ const {
         event.altKey ||
         event.shiftKey ||
         !getActiveNote() ||
+        document.documentElement.dataset.appMode === "witch-trial" ||
         document.querySelector("dialog[open]") ||
         !el.folderContextMenu.classList.contains("hidden") ||
         !el.noteContextMenu.classList.contains("hidden")
@@ -1947,6 +1951,7 @@ const {
     if (event.key === "Escape" && !el.noteContextMenu.classList.contains("hidden")) {
       closeNoteContextMenu();
     }
+    if (document.documentElement.dataset.appMode === "witch-trial") return;
     const modifier = event.metaKey || event.ctrlKey;
     if (modifier && event.key.toLowerCase() === "k") {
       event.preventDefault();

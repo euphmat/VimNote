@@ -101,9 +101,22 @@
             <span class="save-dot"></span>
             <span>Saved on this device</span>
           </div>
+          <span id="trial-mode-badge" class="trial-mode-badge hidden" lang="ja">
+            <i data-lucide="sparkles" aria-hidden="true"></i>
+            魔女裁判
+          </span>
+          <button
+            id="settings-button"
+            class="icon-button"
+            type="button"
+            aria-label="Open settings"
+            data-tooltip="Settings"
+          >
+            <i data-lucide="settings-2" aria-hidden="true"></i>
+          </button>
           <button
             id="theme-button"
-            class="icon-button"
+            class="icon-button standard-mode-control"
             type="button"
             aria-label="Change theme"
             data-tooltip="Themes"
@@ -112,7 +125,7 @@
           </button>
           <button
             id="export-button"
-            class="icon-button"
+            class="icon-button standard-mode-control"
             type="button"
             aria-label="Export note"
             data-tooltip="Export Markdown"
@@ -121,7 +134,7 @@
           </button>
           <button
             id="shortcuts-button"
-            class="icon-button"
+            class="icon-button standard-mode-control"
             type="button"
             aria-label="Keyboard shortcuts"
             data-tooltip="Shortcuts"
@@ -130,7 +143,7 @@
           </button>
           <button
             id="new-note-button-header"
-            class="primary-button ml-1"
+            class="primary-button standard-mode-control ml-1"
             type="button"
           >
             <i data-lucide="plus" aria-hidden="true"></i>
@@ -139,7 +152,7 @@
         </div>
       </header>
 
-      <main class="workspace">
+      <main id="standard-workspace" class="workspace">
         <aside id="navigation" class="navigation-panel">
           <div class="nav-section">
             <p class="section-label">Workspace</p>
@@ -328,6 +341,86 @@
           </div>
         </section>
       </main>
+
+      <main
+        id="trial-workspace"
+        class="trial-workspace hidden"
+        aria-label="魔法少女ノ魔女裁判 捜査メモ"
+        lang="ja"
+      >
+        <aside class="trial-roster-panel">
+          <div class="trial-roster-heading">
+            <p class="trial-kicker">PRISONER FILES</p>
+            <div class="flex items-center justify-between gap-3">
+              <h2>人物記録</h2>
+              <span id="trial-character-count" class="trial-count">15</span>
+            </div>
+            <label class="trial-search">
+              <i data-lucide="search" aria-hidden="true"></i>
+              <input
+                id="trial-character-search"
+                type="search"
+                placeholder="人物を検索"
+                autocomplete="off"
+              />
+            </label>
+          </div>
+          <div id="trial-character-list" class="trial-character-list"></div>
+          <div class="trial-roster-legend">
+            <span><i class="is-clear"></i>シロ寄り</span>
+            <span><i class="is-watch"></i>要注意</span>
+            <span><i class="is-suspect"></i>最重要</span>
+          </div>
+        </aside>
+
+        <section class="trial-case-panel">
+          <header class="trial-case-header">
+            <div class="min-w-0 flex-1">
+              <p class="trial-kicker">WITCH TRIAL / PRIVATE CASE FILE</p>
+              <input
+                id="trial-case-title"
+                class="trial-case-title"
+                maxlength="60"
+                value="第1の事件・捜査記録"
+                aria-label="事件名"
+              />
+              <div class="trial-case-meta">
+                <span><i data-lucide="lock-keyhole" aria-hidden="true"></i>この端末だけに保存</span>
+                <span id="trial-save-state" aria-live="polite">
+                  <i data-lucide="check" aria-hidden="true"></i>保存済み
+                </span>
+              </div>
+            </div>
+            <div class="trial-header-actions">
+              <button id="trial-export-button" class="trial-secondary-button" type="button">
+                <i data-lucide="download" aria-hidden="true"></i>
+                <span>記録を書き出す</span>
+              </button>
+              <button id="trial-add-memo-button" class="trial-primary-button" type="button">
+                <i data-lucide="plus" aria-hidden="true"></i>
+                <span>事件メモ</span>
+              </button>
+            </div>
+          </header>
+
+          <nav class="trial-tabs" aria-label="捜査メニュー">
+            <button class="is-active" data-trial-view="board" type="button">
+              <i data-lucide="scan-search" aria-hidden="true"></i>推理ボード
+            </button>
+            <button data-trial-view="timeline" type="button">
+              <i data-lucide="clock-3" aria-hidden="true"></i>時系列
+            </button>
+            <button data-trial-view="map" type="button">
+              <i data-lucide="map" aria-hidden="true"></i>屋敷マップ
+            </button>
+            <button data-trial-view="reference" type="button">
+              <i data-lucide="book-open-text" aria-hidden="true"></i>裁判資料
+            </button>
+          </nav>
+
+          <div id="trial-view" class="trial-view"></div>
+        </section>
+      </main>
     </div>
 
     <div id="mobile-backdrop" class="mobile-backdrop hidden"></div>
@@ -420,6 +513,102 @@
         Your theme is saved in this browser and restored next time.
       </p>
       <div id="theme-grid" class="theme-grid" role="radiogroup" aria-label="Color theme"></div>
+    </dialog>
+
+    <dialog id="settings-dialog" class="app-dialog app-dialog-small" lang="ja">
+      <div class="dialog-heading">
+        <div>
+          <p class="section-label mb-1">Settings</p>
+          <h2 class="font-serif text-2xl">設定</h2>
+        </div>
+        <button class="icon-button" data-close-dialog type="button" aria-label="閉じる">
+          <i data-lucide="x" aria-hidden="true"></i>
+        </button>
+      </div>
+      <div class="settings-section">
+        <div class="settings-mode-icon" aria-hidden="true">
+          <i data-lucide="sparkles"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="settings-mode-title">魔法少女ノ魔女裁判モード</p>
+              <p class="settings-mode-description">
+                人物、証言、時系列、屋敷マップをひとつの事件ファイルで整理します。
+              </p>
+            </div>
+            <label class="settings-switch">
+              <input id="witch-trial-toggle" type="checkbox" role="switch" />
+              <span aria-hidden="true"></span>
+              <span class="sr-only">魔法少女ノ魔女裁判モードを有効にする</span>
+            </label>
+          </div>
+          <div class="settings-feature-list">
+            <span><i data-lucide="users" aria-hidden="true"></i>人物別メモ</span>
+            <span><i data-lucide="image" aria-hidden="true"></i>画像添付</span>
+            <span><i data-lucide="map" aria-hidden="true"></i>フロア記録</span>
+          </div>
+        </div>
+      </div>
+      <p class="dialog-note settings-note">
+        通常のVimNoteとは別にブラウザ内へ保存されます。モードを切り替えても、どちらのメモも削除されません。
+      </p>
+    </dialog>
+
+    <dialog id="trial-memo-dialog" class="app-dialog trial-memo-dialog" lang="ja">
+      <form id="trial-memo-form">
+        <input id="trial-memo-id" type="hidden" />
+        <div class="dialog-heading">
+          <div>
+            <p class="section-label mb-1">Case memo</p>
+            <h2 id="trial-memo-dialog-title" class="font-serif text-2xl">事件メモを追加</h2>
+          </div>
+          <button class="icon-button" data-close-dialog type="button" aria-label="閉じる">
+            <i data-lucide="x" aria-hidden="true"></i>
+          </button>
+        </div>
+        <div class="trial-form-grid">
+          <label>
+            <span>分類</span>
+            <select id="trial-memo-category" class="text-input">
+              <option value="evidence">証拠</option>
+              <option value="testimony">証言</option>
+              <option value="contradiction">矛盾</option>
+              <option value="theory">仮説</option>
+            </select>
+          </label>
+          <label>
+            <span>見出し</span>
+            <input
+              id="trial-memo-title"
+              class="text-input"
+              maxlength="80"
+              placeholder="例：消灯後の足音"
+              required
+            />
+          </label>
+          <label class="trial-form-wide">
+            <span>内容</span>
+            <textarea
+              id="trial-memo-body"
+              class="text-input trial-textarea"
+              maxlength="2000"
+              placeholder="事実と推測を分けて記録…"
+            ></textarea>
+          </label>
+          <fieldset class="trial-form-wide">
+            <legend>添付する画像（任意）</legend>
+            <div id="trial-asset-picker" class="trial-asset-picker"></div>
+          </fieldset>
+        </div>
+        <div class="trial-dialog-actions">
+          <button class="secondary-button" data-close-dialog type="button">キャンセル</button>
+          <button class="primary-button" type="submit">
+            <i data-lucide="check" aria-hidden="true"></i>
+            メモを保存
+          </button>
+        </div>
+      </form>
     </dialog>
 
     <div

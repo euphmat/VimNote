@@ -6,6 +6,8 @@ export const STORAGE_KEYS = Object.freeze({
   sidebarCollapsed: "vimnote.sidebar-collapsed.v1",
   noteDensity: "vimnote.note-density.v1",
   collapsedFolders: "vimnote.collapsed-folders.v1",
+  witchTrialEnabled: "vimnote.witch-trial-enabled.v1",
+  witchTrialCase: "vimnote.witch-trial-case.v1",
 });
 
 export const themes = Object.freeze([
