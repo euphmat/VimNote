@@ -1,45 +1,44 @@
+import { folderColors, STORAGE_KEYS, themes } from "./js/config.js";
+import {
+  collectFolderTreeIds,
+  findFolder,
+  flattenFolders,
+  isFolderColor,
+} from "./js/folders.js";
+import {
+  escapeHtml,
+  formatBytes,
+  formatListDate,
+  formatLongDate,
+  safeFilename,
+} from "./js/formatters.js";
+import {
+  displayTitle,
+  firstLineH1Title,
+  firstMeaningfulLine,
+  hasFirstLineH1,
+  plainExcerpt,
+} from "./js/notes.js";
+import {
+  getLocalStorageUsage,
+  loadCollapsedFolders,
+  loadFolders,
+  loadNotes,
+  persistCollapsedFolders,
+} from "./js/storage.js";
+
+const {
+  activeNote: ACTIVE_KEY,
+  collapsedFolders: COLLAPSED_FOLDERS_KEY,
+  folders: FOLDERS_KEY,
+  noteDensity: NOTE_DENSITY_KEY,
+  notes: STORAGE_KEY,
+  sidebarCollapsed: SIDEBAR_KEY,
+  theme: THEME_KEY,
+} = STORAGE_KEYS;
+
 (() => {
   "use strict";
-
-  const STORAGE_KEY = "vimnote.notes.v1";
-  const ACTIVE_KEY = "vimnote.active.v1";
-  const THEME_KEY = "vimnote.theme.v1";
-  const FOLDERS_KEY = "vimnote.folders.v1";
-  const SIDEBAR_KEY = "vimnote.sidebar-collapsed.v1";
-  const NOTE_DENSITY_KEY = "vimnote.note-density.v1";
-  const COLLAPSED_FOLDERS_KEY = "vimnote.collapsed-folders.v1";
-  const encoder = new TextEncoder();
-  const themes = [
-    { id: "paper", name: "Paper", description: "Soft and warm", colors: ["#f5f1e8", "#252421", "#e7644b"] },
-    { id: "midnight", name: "Midnight", description: "Deep night blue", colors: ["#10141c", "#edf1f7", "#ff7a66"] },
-    { id: "charcoal", name: "Charcoal", description: "Quiet graphite", colors: ["#171717", "#f1eee8", "#e78b61"] },
-    { id: "forest", name: "Forest", description: "Deep woodland", colors: ["#13201b", "#eef3e8", "#e3a65a"] },
-    { id: "ocean", name: "Ocean", description: "Calm blue water", colors: ["#0e1c24", "#e9f3f5", "#6dc5d6"] },
-    { id: "plum", name: "Plum", description: "Dark violet", colors: ["#211725", "#f4edf3", "#d987b8"] },
-    { id: "sepia", name: "Sepia", description: "Aged notebook", colors: ["#eee3cf", "#392e23", "#a75638"] },
-    { id: "slate", name: "Slate", description: "Clean blue gray", colors: ["#e8edf0", "#253039", "#4f7596"] },
-    { id: "sakura", name: "Sakura", description: "Soft cherry pink", colors: ["#f8ecef", "#382b31", "#c95078"] },
-    { id: "solarized", name: "Solarized", description: "Low contrast", colors: ["#fdf6e3", "#073642", "#cb4b16"] },
-  ];
-  const folderColors = [
-    { value: "#e7644b", name: "Coral" },
-    { value: "#d98b3e", name: "Orange" },
-    { value: "#c5a332", name: "Yellow" },
-    { value: "#629167", name: "Green" },
-    { value: "#3e9183", name: "Teal" },
-    { value: "#3d91a8", name: "Cyan" },
-    { value: "#4f7596", name: "Blue" },
-    { value: "#626ca8", name: "Indigo" },
-    { value: "#8765a6", name: "Purple" },
-    { value: "#c05f87", name: "Pink" },
-    { value: "#906c52", name: "Brown" },
-    { value: "#747b81", name: "Gray" },
-  ];
-  const defaultFolders = [
-    { id: "folder-inbox", name: "Inbox", color: "#e7644b", parentId: null },
-    { id: "folder-work", name: "Work", color: "#4f7596", parentId: null },
-    { id: "folder-personal", name: "Personal", color: "#629167", parentId: null },
-  ];
 
   const state = {
     notes: loadNotes(),
@@ -160,84 +159,7 @@
   });
   CodeMirror.Vim.defineEx("nohlsearch", "noh", () => clearSearchHighlight());
 
-  function loadNotes() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
-      return Array.isArray(saved) ? saved : [];
-    } catch {
-      return [];
-    }
-  }
-
-  function loadFolders() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(FOLDERS_KEY) || "[]");
-      const valid = Array.isArray(saved)
-        ? saved
-            .filter((folder) => folder?.id && folder?.name?.trim())
-            .map((folder, index) => ({
-              id: folder.id,
-              name: folder.name.trim(),
-              color: isFolderColor(folder.color)
-                ? folder.color
-                : folderColors[index % folderColors.length].value,
-              parentId: typeof folder.parentId === "string" ? folder.parentId : null,
-            }))
-        : [];
-      return valid.length
-        ? normalizeFolderHierarchy(valid)
-        : defaultFolders.map((folder) => ({ ...folder }));
-    } catch {
-      return defaultFolders.map((folder) => ({ ...folder }));
-    }
-  }
-
-  function loadCollapsedFolders() {
-    try {
-      const saved = JSON.parse(localStorage.getItem(COLLAPSED_FOLDERS_KEY) || "[]");
-      return new Set(
-        Array.isArray(saved)
-          ? saved.filter((folderId) => typeof folderId === "string")
-          : [],
-      );
-    } catch {
-      return new Set();
-    }
-  }
-
-  function persistCollapsedFolders() {
-    try {
-      localStorage.setItem(
-        COLLAPSED_FOLDERS_KEY,
-        JSON.stringify([...state.collapsedFolderIds]),
-      );
-    } catch {
-      // Keep the current-session tree state when storage is unavailable.
-    }
-  }
-
-  function normalizeFolderHierarchy(folders) {
-    const ids = new Set(folders.map((folder) => folder.id));
-    const byId = new Map(folders.map((folder) => [folder.id, folder]));
-    folders.forEach((folder) => {
-      if (!folder.parentId || !ids.has(folder.parentId) || folder.parentId === folder.id) {
-        folder.parentId = null;
-        return;
-      }
-      const visited = new Set([folder.id]);
-      let currentId = folder.parentId;
-      while (currentId) {
-        if (visited.has(currentId)) {
-          folder.parentId = null;
-          break;
-        }
-        visited.add(currentId);
-        currentId = byId.get(currentId)?.parentId || null;
-      }
-    });
-    return folders;
-  }
-
+  // Data migration and persistence -------------------------------------------
   function migrateLegacyFolders() {
     let changed = false;
     const legacyDefaultNames = {
@@ -361,10 +283,6 @@
     }
   }
 
-  function isFolderColor(value) {
-    return folderColors.some((color) => color.value === value);
-  }
-
   function setSavedState(saved) {
     if (!el.syncState) return;
     el.syncState.querySelector("span:last-child").textContent = saved
@@ -378,6 +296,7 @@
       : "0 0 0 3px var(--danger-soft)";
   }
 
+  // Note commands and filtering ----------------------------------------------
   function getActiveNote() {
     return state.notes.find((note) => note.id === state.activeId) || null;
   }
@@ -479,41 +398,6 @@
     openEditorOnMobile();
   }
 
-  function displayTitle(note) {
-    return firstLineH1Title(note.content) || "Untitled note";
-  }
-
-  function hasFirstLineH1(content) {
-    const firstLine = String(content || "").split(/\r?\n/, 1)[0].replace(/^\uFEFF/, "");
-    return /^#(?:[ \t]+.*)?$/.test(firstLine);
-  }
-
-  function firstLineH1Title(content) {
-    const firstLine = String(content || "").split(/\r?\n/, 1)[0].replace(/^\uFEFF/, "");
-    const match = firstLine.match(/^#[ \t]+(.*)$/);
-    return match ? match[1].trim() : "";
-  }
-
-  function firstMeaningfulLine(content) {
-    return (
-      content
-        ?.split("\n")
-        .map((line) => line.replace(/^#+\s*/, "").trim())
-        .find(Boolean) || ""
-    );
-  }
-
-  function plainExcerpt(content) {
-    return (
-      content
-        .replace(/^#[ \t]+.*(?:\r?\n|$)/, "")
-        .replace(/```[\s\S]*?```/g, " code ")
-        .replace(/[#>*_`[\]()!-]/g, " ")
-        .replace(/\s+/g, " ")
-        .trim() || "No content yet"
-    );
-  }
-
   function filteredNotes() {
     const query = state.query.trim().toLocaleLowerCase("en-US");
     const visibleFolderIds = state.folderFilter
@@ -534,6 +418,7 @@
     });
   }
 
+  // Top-level rendering and appearance ---------------------------------------
   function render() {
     applyTheme(state.theme, false);
     syncNoteDensity();
@@ -544,20 +429,6 @@
     renderThemeChoices();
     void updateStorageStatus();
     lucide.createIcons();
-  }
-
-  function getLocalStorageUsage() {
-    let bytes = 0;
-    try {
-      for (let index = 0; index < localStorage.length; index += 1) {
-        const key = localStorage.key(index) || "";
-        const value = localStorage.getItem(key) || "";
-        bytes += encoder.encode(key).length + encoder.encode(value).length;
-      }
-    } catch {
-      return 0;
-    }
-    return bytes;
   }
 
   async function updateStorageStatus() {
@@ -596,14 +467,6 @@
       "aria-valuetext",
       `${percentageLabel} used, ${formatBytes(remaining)} available`,
     );
-  }
-
-  function formatBytes(bytes) {
-    if (!Number.isFinite(bytes) || bytes < 0) return "—";
-    if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
-    if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`;
-    if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${Math.round(bytes)} B`;
   }
 
   function applyTheme(themeId, announce = true) {
@@ -679,6 +542,7 @@
     lucide.createIcons();
   }
 
+  // Navigation, note list, and editor rendering ------------------------------
   function renderNavigation() {
     el.allCount.textContent = state.notes.length;
     el.pinnedCount.textContent = state.notes.filter((note) => note.pinned).length;
@@ -916,46 +780,19 @@
     el.wordCount.textContent = `${length.toLocaleString("en-US")} characters`;
   }
 
+  // Folder tree operations ---------------------------------------------------
   function getFolder(folderId) {
-    return state.folders.find((folder) => folder.id === folderId) || null;
+    return findFolder(state.folders, folderId);
   }
 
   function getFolderTreeIds(folderId) {
-    const ids = new Set();
-    const visit = (id) => {
-      if (ids.has(id)) return;
-      ids.add(id);
-      state.folders
-        .filter((folder) => folder.parentId === id)
-        .forEach((folder) => visit(folder.id));
-    };
-    visit(folderId);
-    return ids;
+    return collectFolderTreeIds(state.folders, folderId);
   }
 
   function flattenedFolders({ respectCollapsed = false } = {}) {
-    const rows = [];
-    const visited = new Set();
-    const visit = (parentId, depth) => {
-      state.folders
-        .filter((folder) => folder.parentId === parentId)
-        .forEach((folder) => {
-          if (visited.has(folder.id)) return;
-          visited.add(folder.id);
-          const hasChildren = state.folders.some(
-            (item) => item.parentId === folder.id,
-          );
-          const collapsed =
-            hasChildren && state.collapsedFolderIds.has(folder.id);
-          rows.push({ folder, depth, hasChildren, collapsed });
-          if (!respectCollapsed || !collapsed) visit(folder.id, depth + 1);
-        });
-    };
-    visit(null, 0);
-    state.folders.forEach((folder) => {
-      if (!visited.has(folder.id)) rows.push({ folder, depth: 0 });
+    return flattenFolders(state.folders, state.collapsedFolderIds, {
+      respectCollapsed,
     });
-    return rows;
   }
 
   function toggleFolderCollapsed(folderId) {
@@ -966,7 +803,7 @@
     } else {
       state.collapsedFolderIds.add(folderId);
     }
-    persistCollapsedFolders();
+    persistCollapsedFolders(state.collapsedFolderIds);
     renderNavigation();
     lucide.createIcons();
   }
@@ -1016,6 +853,7 @@
     }
   }
 
+  // Folder management --------------------------------------------------------
   function openFolderDialog() {
     state.colorPickerFolderId = null;
     state.renamingFolderId = null;
@@ -1187,7 +1025,7 @@
     state.folders.push(folder);
     if (parent) {
       state.collapsedFolderIds.delete(parent.id);
-      persistCollapsedFolders();
+      persistCollapsedFolders(state.collapsedFolderIds);
     }
     const note = getActiveNote();
     if (note && moveActiveNote) {
@@ -1210,7 +1048,13 @@
 
   function updateFolderColor(folderId, color) {
     const folder = getFolder(folderId);
-    if (!folder || !isFolderColor(color) || folder.color === color) return;
+    if (
+      !folder ||
+      !isFolderColor(color, folderColors) ||
+      folder.color === color
+    ) {
+      return;
+    }
     folder.color = color;
     persist();
     renderNavigation();
@@ -1269,7 +1113,7 @@
     const parent = parentId ? getFolder(parentId) : null;
     folder.parentId = parent?.id || null;
     if (parent) state.collapsedFolderIds.delete(parent.id);
-    persistCollapsedFolders();
+    persistCollapsedFolders(state.collapsedFolderIds);
     persist();
     renderNavigation();
     renderEditableFolders();
@@ -1349,7 +1193,7 @@
     });
     state.folders = state.folders.filter((item) => !treeIds.has(item.id));
     treeIds.forEach((id) => state.collapsedFolderIds.delete(id));
-    persistCollapsedFolders();
+    persistCollapsedFolders(state.collapsedFolderIds);
     if (treeIds.has(state.colorPickerFolderId)) state.colorPickerFolderId = null;
     if (treeIds.has(state.renamingFolderId)) state.renamingFolderId = null;
     state.deletingFolderId = null;
@@ -1416,7 +1260,7 @@
     state.notes.unshift(...noteClones);
     if (source.parentId) {
       state.collapsedFolderIds.delete(source.parentId);
-      persistCollapsedFolders();
+      persistCollapsedFolders(state.collapsedFolderIds);
     }
     persist();
     renderNavigation();
@@ -1432,6 +1276,7 @@
     );
   }
 
+  // Folder and note context menus --------------------------------------------
   function openFolderContextMenu(folderId, x, y, host = document.body) {
     closeNoteContextMenu();
     closeFolderContextMenu();
@@ -1833,6 +1678,7 @@
     lucide.createIcons();
   }
 
+  // Export and responsive shell ----------------------------------------------
   function exportNote(noteId = state.activeId) {
     if (noteId === state.activeId) saveActiveNow();
     const note = state.notes.find((item) => item.id === noteId);
@@ -1851,10 +1697,6 @@
     exportNote(state.activeId);
   }
 
-  function safeFilename(name) {
-    return name.replace(/[\\/:*?"<>|]/g, "-").slice(0, 80) || "untitled";
-  }
-
   function clearSearchHighlight() {
     try {
       CodeMirror.Vim.handleKey(editor, "<Esc>");
@@ -1863,30 +1705,6 @@
       // Search marks are internal to the Vim addon; Escape still closes active search.
     }
     toast("Search highlight cleared");
-  }
-
-  function formatListDate(timestamp) {
-    const date = new Date(timestamp);
-    const now = new Date();
-    if (date.toDateString() === now.toDateString()) {
-      return date.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-    }
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  }
-
-  function formatLongDate(timestamp) {
-    return new Date(timestamp).toLocaleString("en-US", {
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  function escapeHtml(value) {
-    const node = document.createElement("div");
-    node.textContent = String(value);
-    return node.innerHTML;
   }
 
   function toast(message) {
@@ -1957,6 +1775,7 @@
     el.editorPanel.classList.remove("is-open");
   }
 
+  // Event wiring -------------------------------------------------------------
   editor.on("change", () => {
     if (editor._loadingNote) return;
     scheduleSave();
@@ -2204,7 +2023,5 @@
     toast("Changes from another tab were applied");
   });
 
-  // Keep the explicit byte operation reachable for storage diagnostics.
-  void encoder;
   render();
 })();

@@ -1,3 +1,4 @@
+/* Theme tokens ------------------------------------------------------------ */
 :root {
   --font-sarasa: "Sarasa Term J", "Sarasa Mono J", "BIZ UDGothic", "Noto Sans Mono CJK JP",
     ui-monospace, monospace;
@@ -354,6 +355,7 @@
   box-sizing: border-box;
 }
 
+/* Document and shared controls ------------------------------------------- */
 html,
 body {
   width: 100%;
@@ -567,6 +569,7 @@ input:focus-visible,
   box-shadow: 0 0 0 3px var(--success-soft);
 }
 
+/* Three-panel workspace and navigation ----------------------------------- */
 .workspace {
   display: grid;
   width: 100%;
@@ -930,6 +933,7 @@ input:focus-visible,
   transition: width 220ms ease;
 }
 
+/* Note browser ------------------------------------------------------------ */
 .note-browser {
   display: flex;
   overflow: hidden;
@@ -1181,6 +1185,7 @@ input:focus-visible,
   margin: 0 auto 10px;
 }
 
+/* Editor and Markdown preview -------------------------------------------- */
 .editor-panel {
   min-width: 0;
   min-height: 0;
@@ -1608,6 +1613,7 @@ input:focus-visible,
   fill: color-mix(in srgb, var(--folder-color, var(--coral)) 20%, transparent);
 }
 
+/* Dialogs and folder management ------------------------------------------ */
 .app-dialog {
   width: min(570px, calc(100vw - 32px));
   max-height: calc(100dvh - 32px);
@@ -1947,6 +1953,7 @@ input:focus-visible,
   font-size: 13px;
 }
 
+/* Context menus and transient feedback ----------------------------------- */
 .folder-context-menu {
   position: fixed;
   z-index: 210;
@@ -2186,6 +2193,7 @@ input:focus-visible,
   }
 }
 
+/* Responsive layouts ------------------------------------------------------ */
 @media (max-width: 1050px) {
   .workspace {
     grid-template-columns: 210px 300px minmax(390px, 1fr);

@@ -12,6 +12,23 @@ python3 -m http.server 4173
 
 その後 `http://localhost:4173` を開いてください。
 
+## 構成
+
+ビルド工程を持たない静的サイトです。ブラウザ標準の ES Modules を使い、変更理由ごとに JavaScript を分けています。
+
+```text
+index.html          画面のマークアップと外部ライブラリの読み込み
+styles.css          テーマ、レイアウト、コンポーネントのスタイル
+app.js              アプリの状態、描画、イベントをまとめるエントリーポイント
+js/config.js        保存キー、テーマ、フォルダーカラーなどの静的設定
+js/storage.js       localStorage の読み込みと容量計測
+js/notes.js         ノートタイトル・本文から値を導く純粋関数
+js/folders.js       フォルダー階層を扱う純粋関数
+js/formatters.js    日付、容量、HTML、ファイル名の表示変換
+```
+
+機能追加では、まず既存の責務に対応する `js/` 内のモジュールを変更してください。DOM描画やイベント結線は `app.js`、見た目は `styles.css` が担当します。新しい責務が独立してテストできる場合だけモジュールを追加し、細かすぎるファイル分割は避けます。
+
 ## 主な機能
 
 - CodeMirror の Vim モード（`jj` で Esc、`/` 検索、`:w` 保存）
