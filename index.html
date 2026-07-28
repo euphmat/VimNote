@@ -16,6 +16,7 @@
         let savedTheme = "paper";
         let sidebarState = "expanded";
         let noteDensity = "comfortable";
+        let appMode = "notes";
         try {
           savedTheme = localStorage.getItem("vimnote.theme.v1") || "paper";
           sidebarState =
@@ -26,12 +27,17 @@
             localStorage.getItem("vimnote.note-density.v1") === "compact"
               ? "compact"
               : "comfortable";
+          appMode =
+            localStorage.getItem("vimnote.witch-trial-enabled.v1") === "true"
+              ? "witch-trial"
+              : "notes";
         } catch {
           // Storage may be unavailable in a privacy-restricted browser.
         }
         document.documentElement.dataset.theme = savedTheme;
         document.documentElement.dataset.sidebar = sidebarState;
         document.documentElement.dataset.noteDensity = noteDensity;
+        document.documentElement.dataset.appMode = appMode;
       })();
     </script>
     <script src="https://cdn.tailwindcss.com"></script>

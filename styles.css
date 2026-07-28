@@ -2228,6 +2228,14 @@ input:focus-visible,
   display: none;
 }
 
+:root[data-app-mode="witch-trial"] #standard-workspace {
+  display: none;
+}
+
+:root[data-app-mode="witch-trial"] #trial-workspace {
+  display: grid;
+}
+
 .settings-section {
   display: flex;
   gap: 14px;
@@ -3618,6 +3626,10 @@ input:focus-visible,
 }
 
 .trial-form-grid select {
+  width: 100%;
+}
+
+.trial-form-grid .text-input {
   width: 100%;
 }
 
