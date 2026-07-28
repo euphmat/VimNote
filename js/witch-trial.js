@@ -61,16 +61,23 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function defaultCase() {
+function defaultCase(title = "事件・捜査記録") {
   return {
-    title: "第1の事件・捜査記録",
+    id: crypto.randomUUID(),
+    title,
     activeView: "board",
     selectedCharacterId: CHARACTERS[0].id,
     selectedMapId: "1f",
     characterFiles: Object.fromEntries(
       CHARACTERS.map((character) => [
         character.id,
-        { details: "", isDead: false, timeNotes: emptyCharacterTimeNotes() },
+        {
+          basicInfo: "",
+          testimony: "",
+          facts: "",
+          isDead: false,
+          timeNotes: emptyCharacterTimeNotes(),
+        },
       ]),
     ),
     timeline: Object.fromEntries(TIME_SLOTS.map((slot) => [slot.id, ""])),
@@ -78,74 +85,104 @@ function defaultCase() {
   };
 }
 
-function loadCase() {
+function normalizeCase(saved, fallback = defaultCase()) {
+  if (!saved || typeof saved !== "object") return fallback;
+  const characterFiles = { ...fallback.characterFiles };
+  CHARACTERS.forEach((character) => {
+    const file = saved.characterFiles?.[character.id];
+    if (!file || typeof file !== "object") return;
+    const legacyDetails =
+      typeof file.details === "string"
+        ? file.details
+        : typeof file.note === "string"
+          ? file.note
+          : "";
+    characterFiles[character.id] = {
+      basicInfo:
+        typeof file.basicInfo === "string"
+          ? file.basicInfo.slice(0, 10000)
+          : legacyDetails.slice(0, 10000),
+      testimony:
+        typeof file.testimony === "string" ? file.testimony.slice(0, 10000) : "",
+      facts: typeof file.facts === "string" ? file.facts.slice(0, 10000) : "",
+      isDead: file.isDead === true,
+      timeNotes: Object.fromEntries(
+        TIME_SLOTS.map((slot) => [
+          slot.id,
+          typeof file.timeNotes?.[slot.id] === "string"
+            ? file.timeNotes[slot.id].slice(0, 5000)
+            : "",
+        ]),
+      ),
+    };
+  });
+  return {
+    id:
+      typeof saved.id === "string" && saved.id
+        ? saved.id
+        : fallback.id,
+    title:
+      typeof saved.title === "string" && saved.title.trim()
+        ? saved.title.trim() === "第1の事件・捜査記録"
+          ? "事件・捜査記録"
+          : saved.title.slice(0, 60)
+        : fallback.title,
+    activeView: ["board", "timeline", "map", "reference"].includes(
+      saved.activeView,
+    )
+      ? saved.activeView
+      : fallback.activeView,
+    selectedCharacterId: CHARACTERS.some(
+      (character) => character.id === saved.selectedCharacterId,
+    )
+      ? saved.selectedCharacterId
+      : fallback.selectedCharacterId,
+    selectedMapId: MAPS.some((map) => map.id === saved.selectedMapId)
+      ? saved.selectedMapId
+      : fallback.selectedMapId,
+    characterFiles,
+    timeline: Object.fromEntries(
+      TIME_SLOTS.map((slot) => [
+        slot.id,
+        typeof saved.timeline?.[slot.id] === "string"
+          ? saved.timeline[slot.id].slice(0, 3000)
+          : "",
+      ]),
+    ),
+    mapNotes: Object.fromEntries(
+      MAPS.map((map) => [
+        map.id,
+        typeof saved.mapNotes?.[map.id] === "string"
+          ? saved.mapNotes[map.id].slice(0, 3000)
+          : "",
+      ]),
+    ),
+  };
+}
+
+function loadCaseBook() {
   const fallback = defaultCase();
   try {
     const saved = JSON.parse(
       localStorage.getItem(STORAGE_KEYS.witchTrialCase) || "null",
     );
-    if (!saved || typeof saved !== "object") return fallback;
-    const characterFiles = { ...fallback.characterFiles };
-    CHARACTERS.forEach((character) => {
-      const file = saved.characterFiles?.[character.id];
-      if (!file || typeof file !== "object") return;
-      const savedDetails =
-        typeof file.details === "string"
-          ? file.details
-          : typeof file.note === "string"
-            ? file.note
-            : "";
-      characterFiles[character.id] = {
-        details: savedDetails.slice(0, 10000),
-        isDead: file.isDead === true,
-        timeNotes: Object.fromEntries(
-          TIME_SLOTS.map((slot) => [
-            slot.id,
-            typeof file.timeNotes?.[slot.id] === "string"
-              ? file.timeNotes[slot.id].slice(0, 5000)
-              : "",
-          ]),
-        ),
-      };
-    });
-    return {
-      title:
-        typeof saved.title === "string" && saved.title.trim()
-          ? saved.title.slice(0, 60)
-          : fallback.title,
-      activeView: ["board", "timeline", "map", "reference"].includes(
-        saved.activeView,
-      )
-        ? saved.activeView
-        : fallback.activeView,
-      selectedCharacterId: CHARACTERS.some(
-        (character) => character.id === saved.selectedCharacterId,
-      )
-        ? saved.selectedCharacterId
-        : fallback.selectedCharacterId,
-      selectedMapId: MAPS.some((map) => map.id === saved.selectedMapId)
-        ? saved.selectedMapId
-        : fallback.selectedMapId,
-      characterFiles,
-      timeline: Object.fromEntries(
-        TIME_SLOTS.map((slot) => [
-          slot.id,
-          typeof saved.timeline?.[slot.id] === "string"
-            ? saved.timeline[slot.id].slice(0, 3000)
-            : "",
-        ]),
-      ),
-      mapNotes: Object.fromEntries(
-        MAPS.map((map) => [
-          map.id,
-          typeof saved.mapNotes?.[map.id] === "string"
-            ? saved.mapNotes[map.id].slice(0, 3000)
-            : "",
-        ]),
-      ),
-    };
+    if (!saved || typeof saved !== "object") {
+      return { activeCaseId: fallback.id, cases: [fallback] };
+    }
+    if (Array.isArray(saved.cases)) {
+      const cases = saved.cases
+        .filter((item) => item && typeof item === "object")
+        .map((item) => normalizeCase(item));
+      if (!cases.length) return { activeCaseId: fallback.id, cases: [fallback] };
+      const activeCaseId = cases.some((item) => item.id === saved.activeCaseId)
+        ? saved.activeCaseId
+        : cases[0].id;
+      return { activeCaseId, cases };
+    }
+    const migrated = normalizeCase(saved, fallback);
+    return { activeCaseId: migrated.id, cases: [migrated] };
   } catch {
-    return fallback;
+    return { activeCaseId: fallback.id, cases: [fallback] };
   }
 }
 
@@ -167,7 +204,10 @@ function downloadText(filename, content, type) {
 }
 
 export function createWitchTrialMode({ toast = () => {} } = {}) {
-  const data = loadCase();
+  const caseBook = loadCaseBook();
+  let data =
+    caseBook.cases.find((item) => item.id === caseBook.activeCaseId) ||
+    caseBook.cases[0];
   const state = {
     enabled: localStorage.getItem(STORAGE_KEYS.witchTrialEnabled) === "true",
     characterQuery: "",
@@ -189,6 +229,8 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     showDeceased: document.querySelector("#trial-show-deceased"),
     deceasedCount: document.querySelector("#trial-deceased-count"),
     caseTitle: document.querySelector("#trial-case-title"),
+    caseSelect: document.querySelector("#trial-case-select"),
+    newCaseButton: document.querySelector("#trial-new-case-button"),
     saveState: document.querySelector("#trial-save-state"),
     tabs: [...document.querySelectorAll("[data-trial-view]")],
     view: document.querySelector("#trial-view"),
@@ -211,7 +253,11 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
   function persist() {
     clearTimeout(state.saveTimer);
     try {
-      localStorage.setItem(STORAGE_KEYS.witchTrialCase, JSON.stringify(data));
+      caseBook.activeCaseId = data.id;
+      localStorage.setItem(
+        STORAGE_KEYS.witchTrialCase,
+        JSON.stringify({ version: 2, ...caseBook }),
+      );
       setSaveState(true);
     } catch (error) {
       setSaveState(false);
@@ -260,10 +306,22 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
 
   function render() {
     el.caseTitle.value = data.title;
+    renderCaseSwitcher();
     renderCharacterList();
     renderTabs();
     renderView();
     iconRefresh();
+  }
+
+  function renderCaseSwitcher() {
+    el.caseSelect.innerHTML = caseBook.cases
+      .map(
+        (item, index) => `
+          <option value="${escapeHtml(item.id)}"${item.id === data.id ? " selected" : ""}>
+            ${escapeHtml(item.title || `事件 ${index + 1}`)}
+          </option>`,
+      )
+      .join("");
   }
 
   function renderCharacterList() {
@@ -289,7 +347,12 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       const rows = groupCharacters
         .map((character) => {
           const file = data.characterFiles[character.id];
-          const hasDetails = Boolean(file.details.trim());
+          const hasDetails = Boolean(
+            file.basicInfo.trim() ||
+              file.testimony.trim() ||
+              file.facts.trim() ||
+              TIME_SLOTS.some((slot) => file.timeNotes[slot.id].trim()),
+          );
           return `
             <button
               class="trial-character-row${
@@ -378,7 +441,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       (slot) => file.timeNotes[slot.id].trim(),
     ).length;
     const detailedCharacterCount = Object.values(data.characterFiles).filter(
-      (item) => item.details.trim(),
+      (item) => item.basicInfo.trim() || item.testimony.trim() || item.facts.trim(),
     ).length;
     const alibiCharacterCount = Object.values(data.characterFiles).filter(
       (item) => TIME_SLOTS.some((slot) => item.timeNotes[slot.id].trim()),
@@ -395,7 +458,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           <div>
             <p class="trial-kicker">CHARACTER RECORDS</p>
             <h2>人物を知り、供述を整理する。</h2>
-            <p>人物の特徴や関係性を詳しく記録し、時間・場所と照合できます。</p>
+            <p>基本情報・証言・確認済みの事実・時系列を、ひとつの人物ファイルで見渡せます。</p>
           </div>
           <div class="trial-stat-grid">
             <div><strong>${detailedCharacterCount}<small> / ${CHARACTERS.length}</small></strong><span>詳細記入</span></div>
@@ -427,20 +490,55 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                 <strong>死亡</strong>
               </label>
             </div>
-            <label class="trial-field-label" for="trial-character-details">
-              人物詳細
-              <span>特徴・性格・関係性・経歴など</span>
-            </label>
-            <textarea
-              id="trial-character-details"
-              class="trial-dossier-note trial-character-details"
-              maxlength="10000"
-              placeholder="${escapeHtml(character.name)}について分かったことを詳しく記録…"
-            >${escapeHtml(file.details)}</textarea>
+            <div class="trial-character-sections">
+              <section class="trial-character-section">
+                <label class="trial-field-label" for="trial-character-basic">
+                  <i data-lucide="contact" aria-hidden="true"></i>
+                  基本情報
+                  <span>特徴・性格・関係性・経歴</span>
+                </label>
+                <textarea
+                  id="trial-character-basic"
+                  class="trial-dossier-note"
+                  data-character-field="basicInfo"
+                  maxlength="10000"
+                  placeholder="${escapeHtml(character.name)}のプロフィールや人物関係…"
+                >${escapeHtml(file.basicInfo)}</textarea>
+              </section>
+              <section class="trial-character-section">
+                <label class="trial-field-label" for="trial-character-testimony">
+                  <i data-lucide="messages-square" aria-hidden="true"></i>
+                  証言
+                  <span>本人の発言・他者からの証言</span>
+                </label>
+                <textarea
+                  id="trial-character-testimony"
+                  class="trial-dossier-note"
+                  data-character-field="testimony"
+                  maxlength="10000"
+                  placeholder="誰が、いつ、何を語ったか。引用や食い違いも記録…"
+                >${escapeHtml(file.testimony)}</textarea>
+              </section>
+              <section class="trial-character-section">
+                <label class="trial-field-label" for="trial-character-facts">
+                  <i data-lucide="badge-check" aria-hidden="true"></i>
+                  事実
+                  <span>証拠から確認できた客観的な情報</span>
+                </label>
+                <textarea
+                  id="trial-character-facts"
+                  class="trial-dossier-note"
+                  data-character-field="facts"
+                  maxlength="10000"
+                  placeholder="推測と分けて、確認済みの事実だけを記録…"
+                >${escapeHtml(file.facts)}</textarea>
+              </section>
+            </div>
             <div class="trial-character-time-heading">
               <div class="trial-field-label">
-                供述・アリバイ
-                <span>24時間の行動記録をまとめて表示</span>
+                <i data-lucide="clock-3" aria-hidden="true"></i>
+                時系列
+                <span>この人物の証言・アリバイを時間順に記録</span>
               </div>
               <span id="trial-character-time-count" class="trial-character-time-count">
                 <i data-lucide="clock-3" aria-hidden="true"></i>
@@ -478,11 +576,13 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       </div>`;
 
     el.view
-      .querySelector("#trial-character-details")
-      .addEventListener("input", (event) => {
-        file.details = event.target.value;
-        schedulePersist();
-        renderCharacterList();
+      .querySelectorAll("[data-character-field]")
+      .forEach((textarea) => {
+        textarea.addEventListener("input", () => {
+          file[textarea.dataset.characterField] = textarea.value;
+          schedulePersist();
+          renderCharacterList();
+        });
       });
     el.view
       .querySelector("#trial-character-deceased")
@@ -686,14 +786,22 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         "",
         `- 死亡: ${file.isDead ? "はい" : "いいえ"}`,
         "",
-        "#### 人物詳細",
+        "#### 基本情報",
         "",
-        file.details || "_詳細なし_",
+        file.basicInfo || "_記録なし_",
+        "",
+        "#### 証言",
+        "",
+        file.testimony || "_記録なし_",
+        "",
+        "#### 事実",
+        "",
+        file.facts || "_記録なし_",
         "",
       );
       TIME_SLOTS.forEach((slot) => {
         lines.push(
-          `#### ${slot.time} ${slot.label}`,
+          `#### 時系列：${slot.time} ${slot.label}`,
           "",
           file.timeNotes[slot.id] || "_記録なし_",
           "",
@@ -741,8 +849,36 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     state.showDeceased = el.showDeceased.checked;
     renderCharacterList();
   });
+  el.caseSelect.addEventListener("change", () => {
+    const selected = caseBook.cases.find(
+      (item) => item.id === el.caseSelect.value,
+    );
+    if (!selected) return;
+    persist();
+    data = selected;
+    caseBook.activeCaseId = data.id;
+    state.showDeceased = false;
+    persist();
+    render();
+    toast(`${data.title}を開きました`);
+  });
+  el.newCaseButton.addEventListener("click", () => {
+    persist();
+    const nextNumber = caseBook.cases.length + 1;
+    const newCase = defaultCase(`新しい事件 ${nextNumber}`);
+    caseBook.cases.push(newCase);
+    caseBook.activeCaseId = newCase.id;
+    data = newCase;
+    state.showDeceased = false;
+    persist();
+    render();
+    el.caseTitle.focus();
+    el.caseTitle.select();
+    toast("新しい事件ファイルを追加しました");
+  });
   el.caseTitle.addEventListener("input", () => {
     data.title = el.caseTitle.value.trimStart().slice(0, 60);
+    renderCaseSwitcher();
     schedulePersist();
   });
   el.caseTitle.addEventListener("blur", () => {

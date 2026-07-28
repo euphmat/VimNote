@@ -385,12 +385,28 @@
         <section class="trial-case-panel">
           <header class="trial-case-header">
             <div class="min-w-0 flex-1">
-              <p class="trial-kicker">WITCH TRIAL / PRIVATE CASE FILE</p>
+              <div class="trial-case-switcher">
+                <label for="trial-case-select">
+                  <i data-lucide="folder-kanban" aria-hidden="true"></i>
+                  事件ファイル
+                </label>
+                <select id="trial-case-select" aria-label="事件を切り替える"></select>
+                <button
+                  id="trial-new-case-button"
+                  class="trial-add-case-button"
+                  type="button"
+                  aria-label="新しい事件を追加"
+                  data-tooltip="新しい事件を追加"
+                >
+                  <i data-lucide="plus" aria-hidden="true"></i>
+                  <span>事件を追加</span>
+                </button>
+              </div>
               <input
                 id="trial-case-title"
                 class="trial-case-title"
                 maxlength="60"
-                value="第1の事件・捜査記録"
+                value="事件・捜査記録"
                 aria-label="事件名"
               />
               <div class="trial-case-meta">
@@ -549,7 +565,7 @@
             </label>
           </div>
           <div class="settings-feature-list">
-            <span><i data-lucide="users" aria-hidden="true"></i>人物詳細</span>
+            <span><i data-lucide="users" aria-hidden="true"></i>人物ファイル</span>
             <span><i data-lucide="clock-3" aria-hidden="true"></i>24時間一覧</span>
             <span><i data-lucide="map" aria-hidden="true"></i>フロア記録</span>
           </div>

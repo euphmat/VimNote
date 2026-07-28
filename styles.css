@@ -2708,6 +2708,74 @@ input:focus-visible,
   background: rgba(18, 16, 21, 0.8);
 }
 
+.trial-case-switcher {
+  display: flex;
+  width: min(680px, 100%);
+  align-items: center;
+  gap: 7px;
+}
+
+.trial-case-switcher > label {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  color: var(--trial-accent);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.trial-case-switcher > label svg {
+  width: 12px;
+  height: 12px;
+}
+
+.trial-case-switcher select {
+  min-width: 0;
+  max-width: 260px;
+  height: 28px;
+  flex: 1;
+  padding: 0 28px 0 9px;
+  border: 1px solid var(--trial-border);
+  border-radius: 6px;
+  outline: none;
+  background: var(--trial-panel);
+  color: var(--trial-muted);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.trial-case-switcher select:focus {
+  border-color: var(--trial-accent);
+}
+
+.trial-add-case-button {
+  display: inline-flex;
+  height: 28px;
+  flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 0 9px;
+  border: 1px solid color-mix(in srgb, var(--trial-accent) 54%, var(--trial-border));
+  border-radius: 6px;
+  background: var(--trial-accent-soft);
+  color: #e9b7cd;
+  cursor: pointer;
+  font-size: 8px;
+  font-weight: 800;
+}
+
+.trial-add-case-button:hover {
+  background: color-mix(in srgb, var(--trial-accent) 22%, transparent);
+}
+
+.trial-add-case-button svg {
+  width: 12px;
+  height: 12px;
+}
+
 .trial-case-title {
   display: block;
   width: min(560px, 100%);
@@ -3012,10 +3080,50 @@ input:focus-visible,
   font-weight: 800;
 }
 
+.trial-field-label > svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: var(--trial-accent);
+}
+
 .trial-field-label span {
   color: var(--trial-subtle);
   font-size: 8px;
   font-weight: 600;
+}
+
+.trial-character-sections {
+  display: grid;
+  gap: 12px;
+  margin-top: 15px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.trial-character-section {
+  min-width: 0;
+  padding: 0 12px 12px;
+  border: 1px solid var(--trial-border);
+  border-radius: 8px;
+  background: var(--trial-bg);
+}
+
+.trial-character-section:last-child {
+  grid-column: 1 / -1;
+}
+
+.trial-character-section .trial-field-label {
+  margin-top: 12px;
+}
+
+.trial-character-section .trial-dossier-note {
+  width: 100%;
+  min-height: 118px;
+  background: var(--trial-panel);
+}
+
+.trial-character-section:last-child .trial-dossier-note {
+  min-height: 96px;
 }
 
 .trial-character-time-heading {
@@ -3126,11 +3234,6 @@ input:focus-visible,
 
 .trial-dossier-note:focus {
   border-color: var(--trial-accent);
-}
-
-.trial-character-details {
-  min-height: 150px;
-  flex: none;
 }
 
 .trial-dossier-note::placeholder,
@@ -3874,12 +3977,34 @@ input:focus-visible,
     padding: 11px 13px;
   }
 
-  .trial-case-header .trial-kicker,
   .trial-case-meta span:first-child {
     display: none;
   }
 
+  .trial-case-switcher {
+    gap: 5px;
+  }
+
+  .trial-case-switcher > label {
+    display: none;
+  }
+
+  .trial-case-switcher select {
+    max-width: none;
+  }
+
+  .trial-add-case-button {
+    width: 28px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .trial-add-case-button span {
+    display: none;
+  }
+
   .trial-case-title {
+    margin-top: 5px;
     font-size: 17px;
   }
 
@@ -3957,6 +4082,14 @@ input:focus-visible,
   .trial-field-label span {
     display: block;
     margin-top: 2px;
+  }
+
+  .trial-character-sections {
+    grid-template-columns: 1fr;
+  }
+
+  .trial-character-section:last-child {
+    grid-column: auto;
   }
 
   .trial-character-time-heading {
