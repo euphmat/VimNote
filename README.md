@@ -12,6 +12,9 @@ python3 -m http.server 4173
 
 その後 `http://localhost:4173` を開いてください。
 
+OpenAI Sites への配布時だけ、`vinext` の薄いラッパーが既存の静的ファイルを
+`public/` に複製して配信します。アプリ本体は引き続きビルド不要です。
+
 ## 構成
 
 ビルド工程を持たない静的サイトです。ブラウザ標準の ES Modules を使い、変更理由ごとに JavaScript を分けています。
