@@ -39,19 +39,6 @@ const MAPS = Object.freeze([
   { id: "2f", name: "2F", image: "./Assets/Boards/2F.jpg" },
 ]);
 
-const TIME_SLOTS = Object.freeze([
-  { id: "06-10", time: "6:00–10:00", label: "朝の自由時間", note: "朝食／監房開錠" },
-  { id: "10-12", time: "10:00–12:00", label: "監房滞在", note: "看守の管理チェック" },
-  { id: "12-15", time: "12:00–15:00", label: "昼の自由時間", note: "昼食／屋敷内を移動可能" },
-  { id: "15-17", time: "15:00–17:00", label: "監房滞在", note: "月曜15時は焼却炉が稼働" },
-  { id: "17-22", time: "17:00–22:00", label: "夜の自由時間", note: "夕食／シャワー利用可能" },
-  { id: "22-06", time: "22:00–翌6:00", label: "消灯・外出禁止", note: "監房内で就寝" },
-]);
-
-function emptyCharacterTimeNotes() {
-  return Object.fromEntries(TIME_SLOTS.map((slot) => [slot.id, ""]));
-}
-
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -80,11 +67,9 @@ function defaultCase(title = "事件・捜査記録") {
           testimony: "",
           facts: "",
           isDead: false,
-          timeNotes: emptyCharacterTimeNotes(),
         },
       ]),
     ),
-    timeline: Object.fromEntries(TIME_SLOTS.map((slot) => [slot.id, ""])),
     mapNotes: Object.fromEntries(MAPS.map((map) => [map.id, ""])),
   };
 }
@@ -135,14 +120,6 @@ function normalizeCase(saved, fallback = defaultCase()) {
         typeof file.testimony === "string" ? file.testimony.slice(0, 10000) : "",
       facts: typeof file.facts === "string" ? file.facts.slice(0, 10000) : "",
       isDead: file.isDead === true,
-      timeNotes: Object.fromEntries(
-        TIME_SLOTS.map((slot) => [
-          slot.id,
-          typeof file.timeNotes?.[slot.id] === "string"
-            ? file.timeNotes[slot.id].slice(0, 5000)
-            : "",
-        ]),
-      ),
     };
   });
   return {
@@ -170,20 +147,13 @@ function normalizeCase(saved, fallback = defaultCase()) {
         ([key, height]) =>
           typeof key === "string" &&
           key.length <= 100 &&
+          !key.includes(":time:") &&
           Number.isFinite(height) &&
           height >= 40 &&
           height <= 5000,
       ),
     ),
     characterFiles,
-    timeline: Object.fromEntries(
-      TIME_SLOTS.map((slot) => [
-        slot.id,
-        typeof saved.timeline?.[slot.id] === "string"
-          ? saved.timeline[slot.id].slice(0, 3000)
-          : "",
-      ]),
-    ),
     mapNotes: Object.fromEntries(
       MAPS.map((map) => [
         map.id,
@@ -292,7 +262,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       caseBook.activeCaseId = data.id;
       localStorage.setItem(
         STORAGE_KEYS.witchTrialCase,
-        JSON.stringify({ version: 3, ...caseBook }),
+        JSON.stringify({ version: 4, ...caseBook }),
       );
       setSaveState(true);
     } catch (error) {
@@ -431,8 +401,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           const hasDetails = Boolean(
             file.basicInfo.trim() ||
               file.testimony.trim() ||
-              file.facts.trim() ||
-              TIME_SLOTS.some((slot) => file.timeNotes[slot.id].trim()),
+              file.facts.trim()
           );
           return `
             <button
@@ -578,12 +547,9 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
 
   function renderCharacterDossier(character, paneId) {
     const file = data.characterFiles[character.id];
-    const recordedTimeCount = TIME_SLOTS.filter(
-      (slot) => file.timeNotes[slot.id].trim(),
-    ).length;
     const fieldId = (field) => `trial-${paneId}-${character.id}-${field}`;
     return `
-        <section class="trial-dossier" data-dossier-character-id="${character.id}">
+        <section class="trial-dossier">
           <header class="trial-dossier-hero">
             <div class="trial-dossier-image">
               <img src="${character.image}" alt="${escapeHtml(character.name)}" />
@@ -660,45 +626,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                   placeholder="推測と分けて、確認済みの事実だけを記録…"
                 >${escapeHtml(file.facts)}</textarea>
               </section>
-            </div>
-            <div class="trial-character-time-heading">
-              <div class="trial-field-label">
-                <i data-lucide="clock-3" aria-hidden="true"></i>
-                時系列
-                <span>この人物の証言・アリバイを時間順に記録</span>
-              </div>
-              <span
-                class="trial-character-time-count"
-                data-character-time-count="${character.id}"
-              >
-                <i data-lucide="clock-3" aria-hidden="true"></i>
-                ${recordedTimeCount} / ${TIME_SLOTS.length} 時間帯
-              </span>
-            </div>
-            <div
-              class="trial-character-time-list"
-              aria-label="${escapeHtml(character.name)}の24時間の供述・アリバイ"
-            >
-              ${TIME_SLOTS.map(
-                (slot) => `
-                  <label class="trial-character-time-row">
-                    <span class="trial-character-time-context">
-                      <strong>${slot.time}</strong>
-                      <span>
-                        <b>${slot.label}</b>
-                        <small>${slot.note}</small>
-                      </span>
-                    </span>
-                    <textarea
-                      class="trial-dossier-note"
-                      data-character-id="${character.id}"
-                      data-character-time-id="${slot.id}"
-                      data-textarea-height-key="character:${character.id}:time:${slot.id}"
-                      maxlength="5000"
-                      placeholder="${escapeHtml(character.name)}が${slot.time}に、どこで何をしていたか…"
-                    >${escapeHtml(file.timeNotes[slot.id])}</textarea>
-                  </label>`,
-              ).join("")}
             </div>
             <div class="trial-dossier-foot">
               <span><i data-lucide="shield-alert" aria-hidden="true"></i>事実と推測を分けて記録</span>
@@ -862,26 +789,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           );
         });
       });
-    el.view.querySelectorAll("[data-character-time-id]").forEach((textarea) => {
-      textarea.addEventListener("input", (event) => {
-        const characterId = textarea.dataset.characterId;
-        const file = data.characterFiles[characterId];
-        file.timeNotes[textarea.dataset.characterTimeId] = event.target.value;
-        const timeCount = TIME_SLOTS.filter(
-          (slot) => file.timeNotes[slot.id].trim(),
-        ).length;
-        const countLabel = textarea
-          .closest("[data-dossier-character-id]")
-          ?.querySelector(`[data-character-time-count="${characterId}"]`);
-        if (countLabel) {
-          countLabel.innerHTML = `
-            <i data-lucide="clock-3" aria-hidden="true"></i>
-            ${timeCount} / ${TIME_SLOTS.length} 時間帯`;
-          iconRefresh();
-        }
-        schedulePersist();
-      });
-    });
     trackTextareaHeights();
   }
 
@@ -1027,23 +934,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         "#### 事実",
         "",
         file.facts || "_記録なし_",
-        "",
-      );
-      TIME_SLOTS.forEach((slot) => {
-        lines.push(
-          `#### 時系列：${slot.time} ${slot.label}`,
-          "",
-          file.timeNotes[slot.id] || "_記録なし_",
-          "",
-        );
-      });
-    });
-    lines.push("## 時系列", "");
-    TIME_SLOTS.forEach((slot) => {
-      lines.push(
-        `### ${slot.time} ${slot.label}`,
-        "",
-        data.timeline[slot.id] || "_記録なし_",
         "",
       );
     });
