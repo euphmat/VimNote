@@ -374,7 +374,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                         ? "file-check-2"
                         : "file-pen-line"
                   }" aria-hidden="true"></i>
-                  ${file.isDead ? "死亡" : hasDetails ? "詳細あり" : "詳細未記入"}
+                  ${file.isDead ? "死亡" : hasDetails ? "記録あり" : "記録未入力"}
                 </small>
               </span>
               <i data-lucide="chevron-right" aria-hidden="true"></i>
@@ -461,7 +461,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
             <p>基本情報・証言・確認済みの事実・時系列を、ひとつの人物ファイルで見渡せます。</p>
           </div>
           <div class="trial-stat-grid">
-            <div><strong>${detailedCharacterCount}<small> / ${CHARACTERS.length}</small></strong><span>詳細記入</span></div>
+            <div><strong>${detailedCharacterCount}<small> / ${CHARACTERS.length}</small></strong><span>人物記録</span></div>
             <div><strong>${alibiCharacterCount}<small> / ${CHARACTERS.length}</small></strong><span>アリバイ記入</span></div>
             <div><strong>${totalTimeNoteCount}<small> / ${CHARACTERS.length * TIME_SLOTS.length}</small></strong><span>時間帯記録</span></div>
           </div>
