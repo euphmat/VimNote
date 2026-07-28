@@ -370,13 +370,16 @@
                 autocomplete="off"
               />
             </label>
+            <label class="trial-deceased-filter">
+              <input id="trial-show-deceased" type="checkbox" />
+              <span aria-hidden="true">
+                <i data-lucide="check"></i>
+              </span>
+              <span>死亡者を表示</span>
+              <small id="trial-deceased-count">0</small>
+            </label>
           </div>
           <div id="trial-character-list" class="trial-character-list"></div>
-          <div class="trial-roster-legend">
-            <span><i class="is-clear"></i>シロ寄り</span>
-            <span><i class="is-watch"></i>要注意</span>
-            <span><i class="is-suspect"></i>最重要</span>
-          </div>
         </aside>
 
         <section class="trial-case-panel">
@@ -401,10 +404,6 @@
               <button id="trial-export-button" class="trial-secondary-button" type="button">
                 <i data-lucide="download" aria-hidden="true"></i>
                 <span>記録を書き出す</span>
-              </button>
-              <button id="trial-add-memo-button" class="trial-primary-button" type="button">
-                <i data-lucide="plus" aria-hidden="true"></i>
-                <span>事件メモ</span>
               </button>
             </div>
           </header>
@@ -550,8 +549,8 @@
             </label>
           </div>
           <div class="settings-feature-list">
-            <span><i data-lucide="users" aria-hidden="true"></i>人物別メモ</span>
-            <span><i data-lucide="image" aria-hidden="true"></i>画像添付</span>
+            <span><i data-lucide="users" aria-hidden="true"></i>人物詳細</span>
+            <span><i data-lucide="clock-3" aria-hidden="true"></i>時間帯別記録</span>
             <span><i data-lucide="map" aria-hidden="true"></i>フロア記録</span>
           </div>
         </div>
@@ -559,62 +558,6 @@
       <p class="dialog-note settings-note">
         通常のVimNoteとは別にブラウザ内へ保存されます。モードを切り替えても、どちらのメモも削除されません。
       </p>
-    </dialog>
-
-    <dialog id="trial-memo-dialog" class="app-dialog trial-memo-dialog" lang="ja">
-      <form id="trial-memo-form">
-        <input id="trial-memo-id" type="hidden" />
-        <div class="dialog-heading">
-          <div>
-            <p class="section-label mb-1">Case memo</p>
-            <h2 id="trial-memo-dialog-title" class="font-serif text-2xl">事件メモを追加</h2>
-          </div>
-          <button class="icon-button" data-close-dialog type="button" aria-label="閉じる">
-            <i data-lucide="x" aria-hidden="true"></i>
-          </button>
-        </div>
-        <div class="trial-form-grid">
-          <label>
-            <span>分類</span>
-            <select id="trial-memo-category" class="text-input">
-              <option value="evidence">証拠</option>
-              <option value="testimony">証言</option>
-              <option value="contradiction">矛盾</option>
-              <option value="theory">仮説</option>
-            </select>
-          </label>
-          <label>
-            <span>見出し</span>
-            <input
-              id="trial-memo-title"
-              class="text-input"
-              maxlength="80"
-              placeholder="例：消灯後の足音"
-              required
-            />
-          </label>
-          <label class="trial-form-wide">
-            <span>内容</span>
-            <textarea
-              id="trial-memo-body"
-              class="text-input trial-textarea"
-              maxlength="2000"
-              placeholder="事実と推測を分けて記録…"
-            ></textarea>
-          </label>
-          <fieldset class="trial-form-wide">
-            <legend>添付する画像（任意）</legend>
-            <div id="trial-asset-picker" class="trial-asset-picker"></div>
-          </fieldset>
-        </div>
-        <div class="trial-dialog-actions">
-          <button class="secondary-button" data-close-dialog type="button">キャンセル</button>
-          <button class="primary-button" type="submit">
-            <i data-lucide="check" aria-hidden="true"></i>
-            メモを保存
-          </button>
-        </div>
-      </form>
     </dialog>
 
     <div
