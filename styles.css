@@ -2927,79 +2927,23 @@ input:focus-visible,
   padding: 24px 27px 52px;
 }
 
-.trial-overview-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 30px;
-  padding: 19px 21px;
-  border: 1px solid var(--trial-border);
-  border-radius: 11px;
-  background:
-    linear-gradient(105deg, rgba(194, 82, 134, 0.09), transparent 56%),
-    var(--trial-panel);
-}
-
-.trial-overview-card h2 {
-  margin-top: 6px;
-  font-size: 17px;
-  font-weight: 800;
-}
-
-.trial-overview-card p:not(.trial-kicker) {
-  margin-top: 5px;
-  color: var(--trial-muted);
-  font-size: 9px;
-  line-height: 1.6;
-}
-
-.trial-stat-grid {
-  display: grid;
-  flex: none;
-  grid-template-columns: repeat(3, 88px);
-}
-
-.trial-stat-grid > div {
-  padding: 3px 15px;
-  border-left: 1px solid var(--trial-border);
-}
-
-.trial-stat-grid strong,
-.trial-stat-grid span {
-  display: block;
-}
-
-.trial-stat-grid strong {
-  font-size: 21px;
-}
-
-.trial-stat-grid strong small {
-  color: var(--trial-subtle);
-  font-size: 10px;
-}
-
-.trial-stat-grid span {
-  margin-top: 2px;
-  color: var(--trial-subtle);
-  font-size: 8px;
-  font-weight: 700;
-}
-
 .trial-dossier {
   display: grid;
   overflow: hidden;
-  margin-top: 17px;
   border: 1px solid var(--trial-border);
   border-radius: 11px;
   background: var(--trial-panel);
-  grid-template-columns: 205px minmax(0, 1fr);
+  grid-template-columns: 176px minmax(0, 1fr);
 }
 
 .trial-dossier-image {
   position: relative;
-  min-height: 270px;
+  min-height: 0;
+  aspect-ratio: 1;
+  align-self: start;
   overflow: hidden;
   border-right: 1px solid var(--trial-border);
+  border-bottom: 1px solid var(--trial-border);
   background: var(--trial-raised);
 }
 
@@ -3692,19 +3636,6 @@ input:focus-visible,
     padding-left: 20px;
   }
 
-  .trial-overview-card {
-    align-items: flex-start;
-  }
-
-  .trial-stat-grid {
-    grid-template-columns: repeat(3, 72px);
-  }
-
-  .trial-stat-grid > div {
-    padding-right: 9px;
-    padding-left: 9px;
-  }
-
   .trial-map-layout {
     grid-template-columns: 1fr;
   }
@@ -3781,21 +3712,8 @@ input:focus-visible,
     padding: 0;
   }
 
-  .trial-overview-card {
-    display: block;
-  }
-
-  .trial-stat-grid {
-    margin-top: 16px;
-    grid-template-columns: repeat(3, 1fr);
-  }
-
   .trial-dossier {
-    grid-template-columns: 150px minmax(0, 1fr);
-  }
-
-  .trial-dossier-image {
-    min-height: 300px;
+    grid-template-columns: 136px minmax(0, 1fr);
   }
 
   .trial-timeline-row {
@@ -4038,24 +3956,8 @@ input:focus-visible,
     padding: 15px 12px 36px;
   }
 
-  .trial-overview-card {
-    padding: 15px;
-  }
-
-  .trial-overview-card h2 {
-    font-size: 15px;
-  }
-
-  .trial-stat-grid > div:first-child {
-    border-left: 0;
-  }
-
   .trial-dossier {
-    grid-template-columns: 105px minmax(0, 1fr);
-  }
-
-  .trial-dossier-image {
-    min-height: 345px;
+    grid-template-columns: 92px minmax(0, 1fr);
   }
 
   .trial-dossier-body {

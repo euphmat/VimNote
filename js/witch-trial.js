@@ -127,9 +127,7 @@ function normalizeCase(saved, fallback = defaultCase()) {
           ? "事件・捜査記録"
           : saved.title.slice(0, 60)
         : fallback.title,
-    activeView: ["board", "timeline", "map", "reference"].includes(
-      saved.activeView,
-    )
+    activeView: ["board", "map", "reference"].includes(saved.activeView)
       ? saved.activeView
       : fallback.activeView,
     selectedCharacterId: CHARACTERS.some(
@@ -422,9 +420,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
   }
 
   function renderView() {
-    if (data.activeView === "timeline") {
-      renderTimeline();
-    } else if (data.activeView === "map") {
+    if (data.activeView === "map") {
       renderMap();
     } else if (data.activeView === "reference") {
       renderReference();
@@ -440,33 +436,8 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     const recordedTimeCount = TIME_SLOTS.filter(
       (slot) => file.timeNotes[slot.id].trim(),
     ).length;
-    const detailedCharacterCount = Object.values(data.characterFiles).filter(
-      (item) => item.basicInfo.trim() || item.testimony.trim() || item.facts.trim(),
-    ).length;
-    const alibiCharacterCount = Object.values(data.characterFiles).filter(
-      (item) => TIME_SLOTS.some((slot) => item.timeNotes[slot.id].trim()),
-    ).length;
-    const totalTimeNoteCount = Object.values(data.characterFiles).reduce(
-      (total, item) =>
-        total +
-        TIME_SLOTS.filter((slot) => item.timeNotes[slot.id].trim()).length,
-      0,
-    );
     el.view.innerHTML = `
       <div class="trial-dashboard">
-        <section class="trial-overview-card">
-          <div>
-            <p class="trial-kicker">CHARACTER RECORDS</p>
-            <h2>人物を知り、供述を整理する。</h2>
-            <p>基本情報・証言・確認済みの事実・時系列を、ひとつの人物ファイルで見渡せます。</p>
-          </div>
-          <div class="trial-stat-grid">
-            <div><strong>${detailedCharacterCount}<small> / ${CHARACTERS.length}</small></strong><span>人物記録</span></div>
-            <div><strong>${alibiCharacterCount}<small> / ${CHARACTERS.length}</small></strong><span>アリバイ記入</span></div>
-            <div><strong>${totalTimeNoteCount}<small> / ${CHARACTERS.length * TIME_SLOTS.length}</small></strong><span>時間帯記録</span></div>
-          </div>
-        </section>
-
         <section class="trial-dossier">
           <div class="trial-dossier-image">
             <img src="${character.image}" alt="${escapeHtml(character.name)}" />
@@ -609,49 +580,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
             ${timeCount} / ${TIME_SLOTS.length} 時間帯`;
           iconRefresh();
         }
-        schedulePersist();
-      });
-    });
-  }
-
-  function renderTimeline() {
-    el.view.innerHTML = `
-      <div class="trial-content-page">
-        <div class="trial-page-heading">
-          <div>
-            <p class="trial-kicker">DAILY SCHEDULE / ALIBI</p>
-            <h2>時系列とアリバイ</h2>
-            <p>牢屋敷の規則に沿って、目撃情報と空白の時間を整理します。</p>
-          </div>
-          <div class="trial-page-icon"><i data-lucide="clock-3" aria-hidden="true"></i></div>
-        </div>
-        <div class="trial-timeline">
-          ${TIME_SLOTS.map(
-            (slot, index) => `
-              <div class="trial-timeline-row">
-                <div class="trial-timeline-marker">
-                  <span>${String(index + 1).padStart(2, "0")}</span>
-                </div>
-                <div class="trial-timeline-time">
-                  <strong>${slot.time}</strong>
-                  <span>${slot.label}</span>
-                  <small>${slot.note}</small>
-                </div>
-                <label>
-                  <span class="sr-only">${slot.time}の記録</span>
-                  <textarea
-                    data-timeline-id="${slot.id}"
-                    maxlength="3000"
-                    placeholder="誰が、どこで、何をしていたか…"
-                  >${escapeHtml(data.timeline[slot.id])}</textarea>
-                </label>
-              </div>`,
-          ).join("")}
-        </div>
-      </div>`;
-    el.view.querySelectorAll("[data-timeline-id]").forEach((textarea) => {
-      textarea.addEventListener("input", () => {
-        data.timeline[textarea.dataset.timelineId] = textarea.value;
         schedulePersist();
       });
     });
