@@ -62,11 +62,14 @@ function escapeHtml(value) {
 }
 
 function defaultCase(title = "事件・捜査記録") {
+  const initialCharacterId = CHARACTERS[0].id;
   return {
     id: crypto.randomUUID(),
     title,
     activeView: "board",
-    selectedCharacterId: CHARACTERS[0].id,
+    selectedCharacterId: initialCharacterId,
+    openCharacterIds: [initialCharacterId],
+    splitCharacterId: null,
     selectedMapId: "1f",
     textareaHeights: {},
     characterFiles: Object.fromEntries(
@@ -88,6 +91,31 @@ function defaultCase(title = "事件・捜査記録") {
 
 function normalizeCase(saved, fallback = defaultCase()) {
   if (!saved || typeof saved !== "object") return fallback;
+  const validCharacterIds = new Set(
+    CHARACTERS.map((character) => character.id),
+  );
+  const selectedCharacterId = validCharacterIds.has(saved.selectedCharacterId)
+    ? saved.selectedCharacterId
+    : fallback.selectedCharacterId;
+  const openCharacterIds = [
+    ...new Set(
+      (Array.isArray(saved.openCharacterIds)
+        ? saved.openCharacterIds
+        : [selectedCharacterId]
+      ).filter((id) => validCharacterIds.has(id)),
+    ),
+  ];
+  if (!openCharacterIds.includes(selectedCharacterId)) {
+    openCharacterIds.push(selectedCharacterId);
+  }
+  const splitCharacterId =
+    validCharacterIds.has(saved.splitCharacterId) &&
+    saved.splitCharacterId !== selectedCharacterId
+      ? saved.splitCharacterId
+      : null;
+  if (splitCharacterId && !openCharacterIds.includes(splitCharacterId)) {
+    openCharacterIds.push(splitCharacterId);
+  }
   const characterFiles = { ...fallback.characterFiles };
   CHARACTERS.forEach((character) => {
     const file = saved.characterFiles?.[character.id];
@@ -131,11 +159,9 @@ function normalizeCase(saved, fallback = defaultCase()) {
     activeView: ["board", "map", "reference"].includes(saved.activeView)
       ? saved.activeView
       : fallback.activeView,
-    selectedCharacterId: CHARACTERS.some(
-      (character) => character.id === saved.selectedCharacterId,
-    )
-      ? saved.selectedCharacterId
-      : fallback.selectedCharacterId,
+    selectedCharacterId,
+    openCharacterIds,
+    splitCharacterId,
     selectedMapId: MAPS.some((map) => map.id === saved.selectedMapId)
       ? saved.selectedMapId
       : fallback.selectedMapId,
@@ -266,7 +292,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       caseBook.activeCaseId = data.id;
       localStorage.setItem(
         STORAGE_KEYS.witchTrialCase,
-        JSON.stringify({ version: 2, ...caseBook }),
+        JSON.stringify({ version: 3, ...caseBook }),
       );
       setSaveState(true);
     } catch (error) {
@@ -412,9 +438,14 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
             <button
               class="trial-character-row${
                 data.selectedCharacterId === character.id ? " is-active" : ""
+              }${
+                data.openCharacterIds.includes(character.id) ? " is-open" : ""
               }${file.isDead ? " is-deceased" : ""}"
               type="button"
               data-character-id="${character.id}"
+              aria-current="${
+                data.selectedCharacterId === character.id ? "true" : "false"
+              }"
             >
               <img src="${character.image}" alt="" />
               <span class="trial-character-row-copy">
@@ -432,7 +463,11 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                   ${file.isDead ? "死亡" : hasDetails ? "記録あり" : "記録未入力"}
                 </small>
               </span>
-              <i data-lucide="chevron-right" aria-hidden="true"></i>
+              <i data-lucide="${
+                data.openCharacterIds.includes(character.id)
+                  ? "panel-top-open"
+                  : "chevron-right"
+              }" aria-hidden="true"></i>
             </button>`;
         })
         .join("");
@@ -459,12 +494,63 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       .querySelectorAll("[data-character-id]")
       .forEach((button) => {
         button.addEventListener("click", () => {
-          data.selectedCharacterId = button.dataset.characterId;
-          data.activeView = "board";
-          persist();
-          render();
+          activateCharacterTab(button.dataset.characterId);
         });
       });
+    iconRefresh();
+  }
+
+  function activateCharacterTab(characterId) {
+    const character = findCharacter(characterId);
+    const previousCharacterId = data.selectedCharacterId;
+    if (!data.openCharacterIds.includes(character.id)) {
+      data.openCharacterIds.push(character.id);
+    }
+    if (data.splitCharacterId === character.id) {
+      data.splitCharacterId = previousCharacterId;
+    }
+    data.selectedCharacterId = character.id;
+    data.activeView = "board";
+    persist();
+    render();
+  }
+
+  function closeCharacterTab(characterId) {
+    if (data.openCharacterIds.length <= 1) return;
+    const closingIndex = data.openCharacterIds.indexOf(characterId);
+    if (closingIndex < 0) return;
+    data.openCharacterIds.splice(closingIndex, 1);
+    if (data.splitCharacterId === characterId) {
+      data.splitCharacterId = null;
+    }
+    if (data.selectedCharacterId === characterId) {
+      const nextCharacterId =
+        data.splitCharacterId ||
+        data.openCharacterIds[
+          Math.min(closingIndex, data.openCharacterIds.length - 1)
+        ];
+      data.selectedCharacterId = nextCharacterId;
+      if (data.splitCharacterId === nextCharacterId) {
+        data.splitCharacterId = null;
+      }
+    }
+    persist();
+    render();
+  }
+
+  function toggleCharacterSplit() {
+    if (data.splitCharacterId) {
+      data.splitCharacterId = null;
+    } else {
+      data.splitCharacterId =
+        [...data.openCharacterIds]
+          .reverse()
+          .find((characterId) => characterId !== data.selectedCharacterId) ||
+        null;
+    }
+    persist();
+    renderBoard();
+    renderCharacterList();
     iconRefresh();
   }
 
@@ -479,6 +565,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
   function renderView() {
     state.textareaResizeObserver?.disconnect();
     state.textareaResizeObserver = null;
+    el.view.classList.toggle("is-board", data.activeView === "board");
     if (data.activeView === "map") {
       renderMap();
     } else if (data.activeView === "reference") {
@@ -489,15 +576,14 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     iconRefresh();
   }
 
-  function renderBoard() {
-    const character = findCharacter(data.selectedCharacterId);
+  function renderCharacterDossier(character, paneId) {
     const file = data.characterFiles[character.id];
     const recordedTimeCount = TIME_SLOTS.filter(
       (slot) => file.timeNotes[slot.id].trim(),
     ).length;
-    el.view.innerHTML = `
-      <div class="trial-dashboard">
-        <section class="trial-dossier">
+    const fieldId = (field) => `trial-${paneId}-${character.id}-${field}`;
+    return `
+        <section class="trial-dossier" data-dossier-character-id="${character.id}">
           <header class="trial-dossier-hero">
             <div class="trial-dossier-image">
               <img src="${character.image}" alt="${escapeHtml(character.name)}" />
@@ -514,8 +600,8 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
             </div>
             <label class="trial-death-check">
               <input
-                id="trial-character-deceased"
                 type="checkbox"
+                data-character-deceased="${character.id}"
                 ${file.isDead ? "checked" : ""}
               />
               <span aria-hidden="true">
@@ -527,14 +613,15 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           <div class="trial-dossier-body">
             <div class="trial-character-sections">
               <section class="trial-character-section">
-                <label class="trial-field-label" for="trial-character-basic">
+                <label class="trial-field-label" for="${fieldId("basic")}">
                   <i data-lucide="contact" aria-hidden="true"></i>
                   基本情報
                   <span>特徴・性格・関係性・経歴</span>
                 </label>
                 <textarea
-                  id="trial-character-basic"
+                  id="${fieldId("basic")}"
                   class="trial-dossier-note"
+                  data-character-id="${character.id}"
                   data-character-field="basicInfo"
                   data-textarea-height-key="character:${character.id}:basicInfo"
                   maxlength="10000"
@@ -542,14 +629,15 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                 >${escapeHtml(file.basicInfo)}</textarea>
               </section>
               <section class="trial-character-section">
-                <label class="trial-field-label" for="trial-character-testimony">
+                <label class="trial-field-label" for="${fieldId("testimony")}">
                   <i data-lucide="messages-square" aria-hidden="true"></i>
                   証言
                   <span>本人の発言・他者からの証言</span>
                 </label>
                 <textarea
-                  id="trial-character-testimony"
+                  id="${fieldId("testimony")}"
                   class="trial-dossier-note"
+                  data-character-id="${character.id}"
                   data-character-field="testimony"
                   data-textarea-height-key="character:${character.id}:testimony"
                   maxlength="10000"
@@ -557,14 +645,15 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                 >${escapeHtml(file.testimony)}</textarea>
               </section>
               <section class="trial-character-section">
-                <label class="trial-field-label" for="trial-character-facts">
+                <label class="trial-field-label" for="${fieldId("facts")}">
                   <i data-lucide="badge-check" aria-hidden="true"></i>
                   事実
                   <span>証拠から確認できた客観的な情報</span>
                 </label>
                 <textarea
-                  id="trial-character-facts"
+                  id="${fieldId("facts")}"
                   class="trial-dossier-note"
+                  data-character-id="${character.id}"
                   data-character-field="facts"
                   data-textarea-height-key="character:${character.id}:facts"
                   maxlength="10000"
@@ -578,7 +667,10 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                 時系列
                 <span>この人物の証言・アリバイを時間順に記録</span>
               </div>
-              <span id="trial-character-time-count" class="trial-character-time-count">
+              <span
+                class="trial-character-time-count"
+                data-character-time-count="${character.id}"
+              >
                 <i data-lucide="clock-3" aria-hidden="true"></i>
                 ${recordedTimeCount} / ${TIME_SLOTS.length} 時間帯
               </span>
@@ -599,6 +691,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                     </span>
                     <textarea
                       class="trial-dossier-note"
+                      data-character-id="${character.id}"
                       data-character-time-id="${slot.id}"
                       data-textarea-height-key="character:${character.id}:time:${slot.id}"
                       maxlength="5000"
@@ -611,37 +704,175 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
               <span><i data-lucide="shield-alert" aria-hidden="true"></i>事実と推測を分けて記録</span>
             </div>
           </div>
-        </section>
+        </section>`;
+  }
+
+  function renderBoard() {
+    const primaryCharacter = findCharacter(data.selectedCharacterId);
+    const secondaryCharacter = data.splitCharacterId
+      ? findCharacter(data.splitCharacterId)
+      : null;
+    const openCharacters = data.openCharacterIds.map(findCharacter);
+    el.view.innerHTML = `
+      <div class="trial-board-shell">
+        <div class="trial-character-tabs">
+          <div
+            class="trial-character-tab-list"
+            role="tablist"
+            aria-label="開いている人物ファイル"
+          >
+            ${openCharacters
+              .map((character) => {
+                const isActive = character.id === primaryCharacter.id;
+                const isSecondary = character.id === secondaryCharacter?.id;
+                return `
+                  <div class="trial-character-tab-wrap${
+                    isActive ? " is-active" : ""
+                  }${isSecondary ? " is-secondary" : ""}">
+                    <button
+                      class="trial-character-tab"
+                      type="button"
+                      role="tab"
+                      aria-selected="${isActive}"
+                      tabindex="${isActive ? "0" : "-1"}"
+                      data-character-tab="${character.id}"
+                    >
+                      <img src="${character.image}" alt="" />
+                      <span>${escapeHtml(character.name)}</span>
+                      ${
+                        isSecondary
+                          ? '<i data-lucide="columns-2" aria-hidden="true"></i>'
+                          : ""
+                      }
+                    </button>
+                    <button
+                      class="trial-character-tab-close"
+                      type="button"
+                      data-close-character-tab="${character.id}"
+                      aria-label="${escapeHtml(character.name)}のタブを閉じる"
+                      ${openCharacters.length === 1 ? "disabled" : ""}
+                    >
+                      <i data-lucide="x" aria-hidden="true"></i>
+                    </button>
+                  </div>`;
+              })
+              .join("")}
+          </div>
+          <div class="trial-character-tab-actions">
+            <button
+              class="trial-split-button${secondaryCharacter ? " is-active" : ""}"
+              type="button"
+              data-toggle-character-split
+              aria-pressed="${Boolean(secondaryCharacter)}"
+              aria-label="${
+                secondaryCharacter ? "分割ビューを閉じる" : "分割ビューで表示"
+              }"
+              data-tooltip="${
+                openCharacters.length < 2
+                  ? "人物タブを2つ以上開くと分割できます"
+                  : secondaryCharacter
+                    ? "分割ビューを閉じる"
+                    : "分割ビューで表示"
+              }"
+              ${openCharacters.length < 2 ? "disabled" : ""}
+            >
+              <i data-lucide="columns-2" aria-hidden="true"></i>
+              <span>${secondaryCharacter ? "分割を終了" : "分割表示"}</span>
+            </button>
+          </div>
+        </div>
+        <div class="trial-dossier-grid${secondaryCharacter ? " is-split" : ""}">
+          <article
+            class="trial-dossier-pane is-primary"
+            aria-label="${escapeHtml(primaryCharacter.name)}の人物ファイル"
+          >
+            <div class="trial-dashboard">
+              ${renderCharacterDossier(primaryCharacter, "primary")}
+            </div>
+          </article>
+          ${
+            secondaryCharacter
+              ? `
+                <article
+                  class="trial-dossier-pane is-secondary"
+                  aria-label="${escapeHtml(secondaryCharacter.name)}の人物ファイル"
+                >
+                  <div class="trial-dashboard">
+                    ${renderCharacterDossier(secondaryCharacter, "secondary")}
+                  </div>
+                </article>`
+              : ""
+          }
+        </div>
       </div>`;
+
+    el.view.querySelectorAll("[data-character-tab]").forEach((button) => {
+      button.addEventListener("click", () => {
+        activateCharacterTab(button.dataset.characterTab);
+      });
+      button.addEventListener("keydown", (event) => {
+        if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+        event.preventDefault();
+        const currentIndex = data.openCharacterIds.indexOf(
+          button.dataset.characterTab,
+        );
+        const direction = event.key === "ArrowRight" ? 1 : -1;
+        const nextIndex =
+          (currentIndex + direction + data.openCharacterIds.length) %
+          data.openCharacterIds.length;
+        activateCharacterTab(data.openCharacterIds[nextIndex]);
+      });
+    });
+    el.view
+      .querySelectorAll("[data-close-character-tab]")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          closeCharacterTab(button.dataset.closeCharacterTab);
+        });
+      });
+    el.view
+      .querySelector("[data-toggle-character-split]")
+      .addEventListener("click", toggleCharacterSplit);
 
     el.view
       .querySelectorAll("[data-character-field]")
       .forEach((textarea) => {
         textarea.addEventListener("input", () => {
+          const file = data.characterFiles[textarea.dataset.characterId];
           file[textarea.dataset.characterField] = textarea.value;
           schedulePersist();
           renderCharacterList();
         });
       });
     el.view
-      .querySelector("#trial-character-deceased")
-      .addEventListener("change", (event) => {
-        file.isDead = event.target.checked;
-        persist();
-        renderCharacterList();
-        toast(
-          file.isDead
-            ? `${character.name}を死亡者として一覧から非表示にしました`
-            : `${character.name}を人物一覧に戻しました`,
-        );
+      .querySelectorAll("[data-character-deceased]")
+      .forEach((checkbox) => {
+        checkbox.addEventListener("change", (event) => {
+          const character = findCharacter(
+            event.target.dataset.characterDeceased,
+          );
+          const file = data.characterFiles[character.id];
+          file.isDead = event.target.checked;
+          persist();
+          renderCharacterList();
+          toast(
+            file.isDead
+              ? `${character.name}を死亡者として一覧から非表示にしました`
+              : `${character.name}を人物一覧に戻しました`,
+          );
+        });
       });
     el.view.querySelectorAll("[data-character-time-id]").forEach((textarea) => {
       textarea.addEventListener("input", (event) => {
+        const characterId = textarea.dataset.characterId;
+        const file = data.characterFiles[characterId];
         file.timeNotes[textarea.dataset.characterTimeId] = event.target.value;
         const timeCount = TIME_SLOTS.filter(
           (slot) => file.timeNotes[slot.id].trim(),
         ).length;
-        const countLabel = el.view.querySelector("#trial-character-time-count");
+        const countLabel = textarea
+          .closest("[data-dossier-character-id]")
+          ?.querySelector(`[data-character-time-count="${characterId}"]`);
         if (countLabel) {
           countLabel.innerHTML = `
             <i data-lucide="clock-3" aria-hidden="true"></i>
