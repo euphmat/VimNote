@@ -68,6 +68,7 @@ function defaultCase(title = "事件・捜査記録") {
     activeView: "board",
     selectedCharacterId: CHARACTERS[0].id,
     selectedMapId: "1f",
+    textareaHeights: {},
     characterFiles: Object.fromEntries(
       CHARACTERS.map((character) => [
         character.id,
@@ -138,6 +139,16 @@ function normalizeCase(saved, fallback = defaultCase()) {
     selectedMapId: MAPS.some((map) => map.id === saved.selectedMapId)
       ? saved.selectedMapId
       : fallback.selectedMapId,
+    textareaHeights: Object.fromEntries(
+      Object.entries(saved.textareaHeights || {}).filter(
+        ([key, height]) =>
+          typeof key === "string" &&
+          key.length <= 100 &&
+          Number.isFinite(height) &&
+          height >= 40 &&
+          height <= 5000,
+      ),
+    ),
     characterFiles,
     timeline: Object.fromEntries(
       TIME_SLOTS.map((slot) => [
@@ -211,6 +222,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     characterQuery: "",
     showDeceased: false,
     saveTimer: null,
+    textareaResizeObserver: null,
   };
 
   const el = {
@@ -268,6 +280,51 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     setSaveState(false);
     clearTimeout(state.saveTimer);
     state.saveTimer = setTimeout(persist, 240);
+  }
+
+  function trackTextareaHeights() {
+    state.textareaResizeObserver?.disconnect();
+    state.textareaResizeObserver = null;
+
+    const textareas = [
+      ...el.view.querySelectorAll("[data-textarea-height-key]"),
+    ];
+    textareas.forEach((textarea) => {
+      const savedHeight =
+        data.textareaHeights[textarea.dataset.textareaHeightKey];
+      if (Number.isFinite(savedHeight)) {
+        textarea.style.height = `${savedHeight}px`;
+      }
+    });
+
+    if (typeof ResizeObserver !== "function") return;
+    const previousHeights = new WeakMap(
+      textareas.map((textarea) => [
+        textarea,
+        Math.round(textarea.getBoundingClientRect().height),
+      ]),
+    );
+    state.textareaResizeObserver = new ResizeObserver((entries) => {
+      entries.forEach((entry) => {
+        const textarea = entry.target;
+        const height = Math.round(textarea.getBoundingClientRect().height);
+        const previousHeight = previousHeights.get(textarea);
+        previousHeights.set(textarea, height);
+        if (
+          previousHeight === undefined ||
+          Math.abs(height - previousHeight) < 2
+        ) {
+          return;
+        }
+        const key = textarea.dataset.textareaHeightKey;
+        if (data.textareaHeights[key] === height) return;
+        data.textareaHeights[key] = height;
+        schedulePersist();
+      });
+    });
+    textareas.forEach((textarea) =>
+      state.textareaResizeObserver.observe(textarea),
+    );
   }
 
   function setEnabled(enabled, announce = true) {
@@ -420,6 +477,8 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
   }
 
   function renderView() {
+    state.textareaResizeObserver?.disconnect();
+    state.textareaResizeObserver = null;
     if (data.activeView === "map") {
       renderMap();
     } else if (data.activeView === "reference") {
@@ -439,28 +498,33 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     el.view.innerHTML = `
       <div class="trial-dashboard">
         <section class="trial-dossier">
-          <div class="trial-dossier-image">
-            <img src="${character.image}" alt="${escapeHtml(character.name)}" />
-            <span>SUBJECT ${String(CHARACTERS.indexOf(character) + 1).padStart(2, "0")}</span>
-          </div>
-          <div class="trial-dossier-body">
+          <header class="trial-dossier-hero">
+            <div class="trial-dossier-image">
+              <img src="${character.image}" alt="${escapeHtml(character.name)}" />
+              <span>SUBJECT ${String(CHARACTERS.indexOf(character) + 1).padStart(2, "0")}</span>
+            </div>
             <div class="trial-dossier-heading">
-              <div>
+              <div class="trial-dossier-identity">
                 <p class="trial-kicker">CHARACTER DOSSIER</p>
                 <h2>${escapeHtml(character.name)}</h2>
+                <p class="trial-dossier-summary">
+                  人物情報・証言・確認済みの事実を、このファイルに集約します。
+                </p>
               </div>
-              <label class="trial-death-check">
-                <input
-                  id="trial-character-deceased"
-                  type="checkbox"
-                  ${file.isDead ? "checked" : ""}
-                />
-                <span aria-hidden="true">
-                  <i data-lucide="check"></i>
-                </span>
-                <strong>死亡</strong>
-              </label>
             </div>
+            <label class="trial-death-check">
+              <input
+                id="trial-character-deceased"
+                type="checkbox"
+                ${file.isDead ? "checked" : ""}
+              />
+              <span aria-hidden="true">
+                <i data-lucide="check"></i>
+              </span>
+              <strong>死亡</strong>
+            </label>
+          </header>
+          <div class="trial-dossier-body">
             <div class="trial-character-sections">
               <section class="trial-character-section">
                 <label class="trial-field-label" for="trial-character-basic">
@@ -472,6 +536,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                   id="trial-character-basic"
                   class="trial-dossier-note"
                   data-character-field="basicInfo"
+                  data-textarea-height-key="character:${character.id}:basicInfo"
                   maxlength="10000"
                   placeholder="${escapeHtml(character.name)}のプロフィールや人物関係…"
                 >${escapeHtml(file.basicInfo)}</textarea>
@@ -486,6 +551,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                   id="trial-character-testimony"
                   class="trial-dossier-note"
                   data-character-field="testimony"
+                  data-textarea-height-key="character:${character.id}:testimony"
                   maxlength="10000"
                   placeholder="誰が、いつ、何を語ったか。引用や食い違いも記録…"
                 >${escapeHtml(file.testimony)}</textarea>
@@ -500,6 +566,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                   id="trial-character-facts"
                   class="trial-dossier-note"
                   data-character-field="facts"
+                  data-textarea-height-key="character:${character.id}:facts"
                   maxlength="10000"
                   placeholder="推測と分けて、確認済みの事実だけを記録…"
                 >${escapeHtml(file.facts)}</textarea>
@@ -533,6 +600,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                     <textarea
                       class="trial-dossier-note"
                       data-character-time-id="${slot.id}"
+                      data-textarea-height-key="character:${character.id}:time:${slot.id}"
                       maxlength="5000"
                       placeholder="${escapeHtml(character.name)}が${slot.time}に、どこで何をしていたか…"
                     >${escapeHtml(file.timeNotes[slot.id])}</textarea>
@@ -583,6 +651,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         schedulePersist();
       });
     });
+    trackTextareaHeights();
   }
 
   function renderMap() {
@@ -620,6 +689,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
             </div>
             <textarea
               id="trial-map-note"
+              data-textarea-height-key="map:${map.id}"
               maxlength="3000"
               placeholder="現場、証拠、移動経路、立入可能な時間…"
             >${escapeHtml(data.mapNotes[map.id])}</textarea>
@@ -638,6 +708,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       data.mapNotes[map.id] = event.target.value;
       schedulePersist();
     });
+    trackTextareaHeights();
   }
 
   function renderReference() {
