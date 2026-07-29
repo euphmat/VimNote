@@ -1,4 +1,8 @@
 import { STORAGE_KEYS } from "./config.js";
+import {
+  clearVimSearch,
+  createVimMarkdownEditor,
+} from "./vim-editor.js";
 
 const CHARACTERS = Object.freeze([
   { id: "emma", name: "桜羽エマ", image: "./Assets/Character/桜羽エマ.JPG" },
@@ -155,12 +159,18 @@ const CHARACTER_FIELDS = Object.freeze([
   },
 ]);
 
-const SUSPICION_LEVELS = Object.freeze([
-  { id: "unknown", label: "未検討" },
-  { id: "cleared", label: "疑い薄" },
-  { id: "watch", label: "要確認" },
-  { id: "strong", label: "有力候補" },
-]);
+const LEGACY_SUSPICION_LABELS = Object.freeze({
+  cleared: "疑い薄",
+  watch: "要確認",
+  strong: "有力候補",
+});
+
+const CHARACTER_NOTE_PLACEHOLDER =
+  "# 人物メモ\n\n人物・関係、魔法・トラウマ、証言・時系列、アリバイ、矛盾、確定した事実を自由に記録";
+
+const CHARACTER_NOTE_TEMPLATE = CHARACTER_FIELDS.map(
+  (field) => `## ${field.label}\n\n${field.template}`,
+).join("\n\n");
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -188,13 +198,7 @@ function defaultCase(title = "事件・捜査記録") {
       CHARACTERS.map((character) => [
         character.id,
         {
-          basicInfo: "",
-          magicTrauma: "",
-          testimony: "",
-          alibi: "",
-          contradictions: "",
-          facts: "",
-          suspicion: "unknown",
+          note: "",
           isDead: false,
         },
       ]),
@@ -250,34 +254,26 @@ function normalizeCase(saved, fallback = defaultCase()) {
   CHARACTERS.forEach((character) => {
     const file = saved.characterFiles?.[character.id];
     if (!file || typeof file !== "object") return;
-    const legacyDetails =
-      typeof file.details === "string"
-        ? file.details
-        : typeof file.note === "string"
-          ? file.note
-          : "";
+    const legacySections = CHARACTER_FIELDS.flatMap((field) => {
+      const value =
+        typeof file[field.key] === "string" ? file[field.key].trim() : "";
+      return value ? [`## ${field.label}`, "", value, ""] : [];
+    });
+    const legacySuspicion = LEGACY_SUSPICION_LABELS[file.suspicion];
+    const migratedNote = [
+      ...(legacySuspicion ? [`疑い（旧ステータス）: ${legacySuspicion}`, ""] : []),
+      ...legacySections,
+    ]
+      .join("\n")
+      .trim();
+    const note =
+      typeof file.note === "string"
+        ? file.note
+        : typeof file.details === "string"
+          ? file.details
+          : migratedNote;
     characterFiles[character.id] = {
-      basicInfo:
-        typeof file.basicInfo === "string"
-          ? file.basicInfo.slice(0, 10000)
-          : legacyDetails.slice(0, 10000),
-      magicTrauma:
-        typeof file.magicTrauma === "string"
-          ? file.magicTrauma.slice(0, 10000)
-          : "",
-      testimony:
-        typeof file.testimony === "string" ? file.testimony.slice(0, 10000) : "",
-      alibi: typeof file.alibi === "string" ? file.alibi.slice(0, 10000) : "",
-      contradictions:
-        typeof file.contradictions === "string"
-          ? file.contradictions.slice(0, 10000)
-          : "",
-      facts: typeof file.facts === "string" ? file.facts.slice(0, 10000) : "",
-      suspicion: SUSPICION_LEVELS.some(
-        (level) => level.id === file.suspicion,
-      )
-        ? file.suspicion
-        : "unknown",
+      note,
       isDead: file.isDead === true,
     };
   });
@@ -308,6 +304,7 @@ function normalizeCase(saved, fallback = defaultCase()) {
           typeof key === "string" &&
           key.length <= 100 &&
           !key.includes(":time:") &&
+          !key.startsWith("character:") &&
           Number.isFinite(height) &&
           height >= 40 &&
           height <= 5000,
@@ -388,6 +385,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     saveTimer: null,
     tabActivationTimer: null,
     textareaResizeObserver: null,
+    characterEditors: [],
     rulesHtml: null,
     rulesPromise: null,
   };
@@ -441,7 +439,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       caseBook.activeCaseId = data.id;
       localStorage.setItem(
         STORAGE_KEYS.witchTrialCase,
-        JSON.stringify({ version: 6, ...caseBook }),
+        JSON.stringify({ version: 7, ...caseBook }),
       );
       setSaveState(true);
     } catch (error) {
@@ -672,13 +670,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       const rows = groupCharacters
         .map((character) => {
           const file = data.characterFiles[character.id];
-          const completedFields = CHARACTER_FIELDS.filter((field) =>
-            file[field.key].trim(),
-          ).length;
-          const hasDetails = completedFields > 0;
-          const suspicion = SUSPICION_LEVELS.find(
-            (level) => level.id === file.suspicion,
-          );
+          const hasDetails = Boolean(file.note.trim());
           return `
             <button
               class="trial-character-row${
@@ -709,11 +701,9 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                   ${
                     file.isDead
                       ? "死亡"
-                      : file.suspicion === "strong"
-                        ? "有力候補"
-                        : hasDetails
-                          ? `${completedFields}/${CHARACTER_FIELDS.length} 記録`
-                          : suspicion.label
+                      : hasDetails
+                        ? "記録あり"
+                        : "未記録"
                   }
                 </small>
               </span>
@@ -880,6 +870,8 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
   }
 
   function renderView() {
+    state.characterEditors.forEach((editor) => editor.toTextArea());
+    state.characterEditors = [];
     state.textareaResizeObserver?.disconnect();
     state.textareaResizeObserver = null;
     el.view.classList.toggle("is-board", data.activeView === "board");
@@ -1049,10 +1041,8 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
 
   function renderCharacterDossier(character, paneId) {
     const file = data.characterFiles[character.id];
-    const fieldId = (field) => `trial-${paneId}-${character.id}-${field}`;
-    const completed = CHARACTER_FIELDS.filter((field) =>
-      file[field.key].trim(),
-    ).length;
+    const editorId = `trial-${paneId}-${character.id}-note`;
+    const hasNote = Boolean(file.note.trim());
     return `
         <section class="trial-dossier">
           <header class="trial-dossier-hero">
@@ -1069,22 +1059,11 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                 </p>
               </div>
               <div class="trial-dossier-progress">
-                <strong>${completed}/${CHARACTER_FIELDS.length}</strong>
-                <span>調査項目を記録</span>
+                <strong>${hasNote ? "記録あり" : "未記録"}</strong>
+                <span>人物メモ</span>
               </div>
             </div>
             <div class="trial-dossier-status">
-              <label>
-                <span>疑い</span>
-                <select data-character-suspicion="${character.id}" aria-label="${escapeHtml(character.name)}の疑い">
-                  ${SUSPICION_LEVELS.map(
-                    (level) => `
-                      <option value="${level.id}"${file.suspicion === level.id ? " selected" : ""}>
-                        ${level.label}
-                      </option>`,
-                  ).join("")}
-                </select>
-              </label>
               <label class="trial-death-check">
                 <input
                   type="checkbox"
@@ -1099,23 +1078,110 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
             </div>
           </header>
           <div class="trial-dossier-body">
-            <div class="trial-character-sections">
-              ${CHARACTER_FIELDS.map((field) =>
-                renderFieldCard({
-                  field,
-                  value: file[field.key],
-                  id: fieldId(field.key),
-                  dataAttributes: `data-character-id="${character.id}" data-character-field="${field.key}"`,
-                  heightKey: `character:${character.id}:${field.key}`,
-                }),
-              ).join("")}
-            </div>
+            <section class="trial-character-editor${hasNote ? " has-value" : ""}">
+              <div class="trial-character-editor-heading">
+                <label for="${editorId}">
+                  <i data-lucide="file-pen-line" aria-hidden="true"></i>
+                  <span>
+                    <strong>人物メモ</strong>
+                    <small>Markdown / Vim キーバインド対応</small>
+                  </span>
+                </label>
+                <button
+                  class="trial-template-button"
+                  type="button"
+                  data-insert-character-template="${character.id}"
+                  aria-label="${escapeHtml(character.name)}の記録テンプレートを挿入"
+                >
+                  <i data-lucide="list-plus" aria-hidden="true"></i>
+                  型を挿入
+                </button>
+              </div>
+              <div class="trial-character-vim-editor">
+                <textarea
+                  id="${editorId}"
+                  data-character-note="${character.id}"
+                  aria-label="${escapeHtml(character.name)}の人物メモ"
+                  placeholder="${escapeHtml(CHARACTER_NOTE_PLACEHOLDER)}"
+                >${escapeHtml(file.note)}</textarea>
+              </div>
+              <div class="trial-character-editor-status">
+                <span>
+                  <b data-character-vim-mode="${character.id}">NORMAL</b>
+                  <i data-character-cursor="${character.id}">1:1</i>
+                </span>
+                <small data-character-note-count="${character.id}">${file.note.length.toLocaleString("ja-JP")} 文字</small>
+              </div>
+            </section>
             <div class="trial-dossier-foot">
-              <span><i data-lucide="shield-alert" aria-hidden="true"></i>証言・推測・確定事実を分けて記録</span>
+              <span><i data-lucide="keyboard" aria-hidden="true"></i><code>jj</code> でNORMAL、<code>:w</code> で保存</span>
               <span><i data-lucide="save" aria-hidden="true"></i>入力内容は自動保存</span>
             </div>
           </div>
         </section>`;
+  }
+
+  function mountCharacterEditors() {
+    el.view.querySelectorAll("[data-character-note]").forEach((textarea) => {
+      const characterId = textarea.dataset.characterNote;
+      const file = data.characterFiles[characterId];
+      const section = textarea.closest(".trial-character-editor");
+      const mode = section.querySelector("[data-character-vim-mode]");
+      const cursor = section.querySelector("[data-character-cursor]");
+      const count = section.querySelector("[data-character-note-count]");
+      const editor = createVimMarkdownEditor(textarea, {
+        onSave: () => {
+          persist();
+          toast(`${findCharacter(characterId).name}の人物メモを保存しました`);
+        },
+        onClearSearch: () => {
+          clearVimSearch(editor);
+          toast("検索ハイライトを解除しました");
+        },
+      });
+      state.characterEditors.push(editor);
+
+      editor.on("change", () => {
+        const wasFilled = Boolean(file.note.trim());
+        file.note = editor.getValue();
+        const isFilled = Boolean(file.note.trim());
+        section.classList.toggle("has-value", isFilled);
+        count.textContent = `${file.note.length.toLocaleString("ja-JP")} 文字`;
+        const progress = section
+          .closest(".trial-dossier")
+          ?.querySelector(".trial-dossier-progress strong");
+        if (progress) progress.textContent = isFilled ? "記録あり" : "未記録";
+        schedulePersist();
+        if (wasFilled !== isFilled) renderCharacterList();
+      });
+      editor.on("cursorActivity", () => {
+        const position = editor.getCursor();
+        cursor.textContent = `${position.line + 1}:${position.ch + 1}`;
+      });
+      editor.on("vim-mode-change", (nextMode) => {
+        mode.textContent = (nextMode.mode || "normal").toUpperCase();
+      });
+      editor.refresh();
+    });
+
+    el.view
+      .querySelectorAll("[data-insert-character-template]")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          const textarea = el.view.querySelector(
+            `[data-character-note="${CSS.escape(button.dataset.insertCharacterTemplate)}"]`,
+          );
+          const editor = state.characterEditors.find(
+            (item) => item.getTextArea() === textarea,
+          );
+          if (!editor) return;
+          const insertion = editor.getValue().trim()
+            ? `\n\n${CHARACTER_NOTE_TEMPLATE}`
+            : CHARACTER_NOTE_TEMPLATE;
+          editor.replaceSelection(insertion, "end");
+          editor.focus();
+        });
+      });
   }
 
   function renderBoard() {
@@ -1302,39 +1368,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         });
       });
 
-    el.view
-      .querySelectorAll("[data-character-field]")
-      .forEach((textarea) => {
-        textarea.addEventListener("input", () => {
-          const file = data.characterFiles[textarea.dataset.characterId];
-          const wasFilled = Boolean(
-            file[textarea.dataset.characterField].trim(),
-          );
-          file[textarea.dataset.characterField] = textarea.value;
-          updateFieldCard(textarea);
-          schedulePersist();
-          const isFilled = Boolean(textarea.value.trim());
-          const dossier = textarea.closest(".trial-dossier");
-          const completed = CHARACTER_FIELDS.filter((field) =>
-            file[field.key].trim(),
-          ).length;
-          const progress = dossier?.querySelector(".trial-dossier-progress strong");
-          if (progress) {
-            progress.textContent = `${completed}/${CHARACTER_FIELDS.length}`;
-          }
-          if (wasFilled !== isFilled) renderCharacterList();
-        });
-      });
-    el.view
-      .querySelectorAll("[data-character-suspicion]")
-      .forEach((select) => {
-        select.addEventListener("change", () => {
-          const file = data.characterFiles[select.dataset.characterSuspicion];
-          file.suspicion = select.value;
-          persist();
-          renderCharacterList();
-        });
-      });
+    mountCharacterEditors();
     el.view
       .querySelectorAll("[data-character-deceased]")
       .forEach((checkbox) => {
@@ -1353,8 +1387,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           );
         });
       });
-    bindFieldEnhancements(el.view);
-    trackTextareaHeights();
   }
 
   function renderMapDialog() {
@@ -1520,17 +1552,9 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         `### ${character.name}`,
         "",
         `- 死亡: ${file.isDead ? "はい" : "いいえ"}`,
-        `- 疑い: ${
-          SUSPICION_LEVELS.find((level) => level.id === file.suspicion)?.label ||
-          "未検討"
-        }`,
         "",
-        ...CHARACTER_FIELDS.flatMap((field) => [
-          `#### ${field.label}`,
-          "",
-          file[field.key] || "_記録なし_",
-          "",
-        ]),
+        file.note || "_記録なし_",
+        "",
       );
     });
     lines.push("## 屋敷マップ", "");

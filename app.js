@@ -26,6 +26,10 @@ import {
   loadNotes,
   persistCollapsedFolders,
 } from "./js/storage.js";
+import {
+  clearVimSearch,
+  createVimMarkdownEditor,
+} from "./js/vim-editor.js";
 import { createWitchTrialMode } from "./js/witch-trial.js";
 
 const {
@@ -134,31 +138,16 @@ const {
     breaks: true,
   });
 
-  const editor = CodeMirror.fromTextArea(document.querySelector("#markdown-editor"), {
-    mode: "markdown",
-    theme: "default",
-    keyMap: "vim",
-    lineNumbers: true,
-    lineWrapping: true,
-    tabSize: 2,
-    indentUnit: 2,
-    indentWithTabs: false,
-    smartIndent: true,
-    showCursorWhenSelecting: true,
-    inputStyle: "textarea",
-    extraKeys: {
-      Tab(cm) {
-        cm.replaceSelection("  ", "end");
+  const editor = createVimMarkdownEditor(
+    document.querySelector("#markdown-editor"),
+    {
+      onSave: () => {
+        saveActiveNow();
+        toast("Note saved");
       },
+      onClearSearch: () => clearSearchHighlight(),
     },
-  });
-
-  CodeMirror.Vim.map("jj", "<Esc>", "insert");
-  CodeMirror.Vim.defineEx("write", "w", () => {
-    saveActiveNow();
-    toast("Note saved");
-  });
-  CodeMirror.Vim.defineEx("nohlsearch", "noh", () => clearSearchHighlight());
+  );
 
   // Data migration and persistence -------------------------------------------
   function migrateLegacyFolders() {
@@ -1699,12 +1688,7 @@ const {
   }
 
   function clearSearchHighlight() {
-    try {
-      CodeMirror.Vim.handleKey(editor, "<Esc>");
-      editor.getAllMarks().forEach((mark) => mark.clear());
-    } catch {
-      // Search marks are internal to the Vim addon; Escape still closes active search.
-    }
+    clearVimSearch(editor);
     toast("Search highlight cleared");
   }
 

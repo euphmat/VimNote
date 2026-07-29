@@ -3523,10 +3523,6 @@ input:focus-visible,
   flex-wrap: wrap;
 }
 
-.trial-dossier-grid.is-split .trial-dossier-status select {
-  min-width: 82px;
-}
-
 .trial-dossier-grid.is-split .trial-death-check {
   min-height: 27px;
   padding: 4px 8px;
@@ -3699,34 +3695,6 @@ input:focus-visible,
   gap: 7px;
 }
 
-.trial-dossier-status > label:first-child {
-  display: grid;
-  gap: 3px;
-  color: var(--trial-subtle);
-  font-size: 7px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.trial-dossier-status select {
-  min-width: 88px;
-  height: 30px;
-  padding: 0 24px 0 8px;
-  border: 1px solid var(--trial-border);
-  border-radius: 7px;
-  outline: none;
-  background: var(--trial-bg);
-  color: var(--trial-ink);
-  cursor: pointer;
-  font-size: 9px;
-  font-weight: 800;
-}
-
-.trial-dossier-status select:focus-visible {
-  border-color: var(--trial-accent);
-  box-shadow: 0 0 0 2px var(--trial-accent-soft);
-}
-
 .trial-death-check {
   display: inline-flex;
   min-height: 30px;
@@ -3798,6 +3766,159 @@ input:focus-visible,
   gap: 12px;
   margin-top: 0;
   grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.trial-character-editor {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid var(--trial-border);
+  border-radius: 8px;
+  background: var(--trial-bg);
+  transition:
+    border-color 140ms ease,
+    background 140ms ease;
+}
+
+.trial-character-editor:focus-within {
+  border-color: color-mix(in srgb, var(--trial-accent) 72%, var(--trial-border));
+  background: color-mix(in srgb, var(--trial-accent) 5%, var(--trial-bg));
+}
+
+.trial-character-editor.has-value {
+  border-color: color-mix(in srgb, #75ad90 30%, var(--trial-border));
+}
+
+.trial-character-editor-heading {
+  display: flex;
+  min-height: 51px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 9px 11px;
+  border-bottom: 1px solid var(--trial-border);
+  background: var(--trial-raised);
+}
+
+.trial-character-editor-heading label {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.trial-character-editor-heading label > svg {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  color: var(--trial-accent);
+}
+
+.trial-character-editor-heading label > span {
+  display: grid;
+  gap: 3px;
+}
+
+.trial-character-editor-heading strong {
+  color: var(--trial-ink);
+  font-size: 10px;
+}
+
+.trial-character-editor-heading small {
+  color: var(--trial-subtle);
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.trial-character-vim-editor {
+  height: clamp(320px, 52vh, 620px);
+  background: var(--trial-panel);
+}
+
+.trial-character-vim-editor > textarea {
+  width: 100%;
+  height: 100%;
+  padding: 14px;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--trial-ink);
+  resize: none;
+}
+
+.trial-character-vim-editor .CodeMirror {
+  height: 100%;
+  padding: 12px 0;
+  color: var(--trial-ink);
+}
+
+.trial-character-vim-editor .CodeMirror-scroll {
+  padding-right: 10px;
+}
+
+.trial-character-vim-editor .CodeMirror-gutters {
+  border-color: var(--trial-border);
+  background: var(--trial-panel);
+}
+
+.trial-character-vim-editor .CodeMirror-linenumber {
+  color: var(--trial-subtle);
+}
+
+.trial-character-vim-editor .CodeMirror-cursor {
+  border-left-color: var(--trial-accent) !important;
+}
+
+.trial-character-vim-editor .CodeMirror-selected,
+.trial-character-vim-editor .CodeMirror-focused .CodeMirror-selected {
+  background: var(--trial-accent-soft) !important;
+}
+
+.trial-character-vim-editor .CodeMirror-dialog {
+  border-color: var(--trial-border-strong);
+  background: var(--trial-raised);
+  color: var(--trial-ink);
+  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.3);
+}
+
+.trial-character-vim-editor .CodeMirror-vim-message {
+  color: #e8b6ce;
+}
+
+.trial-character-editor-status {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 11px;
+  border-top: 1px solid var(--trial-border);
+  color: var(--trial-subtle);
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.trial-character-editor-status > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.trial-character-editor-status b {
+  min-width: 48px;
+  color: #e8b6ce;
+  font-size: 8px;
+  letter-spacing: 0.08em;
+}
+
+.trial-character-editor-status i {
+  font-style: normal;
+}
+
+.trial-dossier-foot code {
+  margin: 0 2px;
+  color: #e8b6ce;
+  font-family: var(--font-sarasa);
+  font-size: inherit;
 }
 
 .trial-character-section {
