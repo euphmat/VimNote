@@ -846,7 +846,7 @@ function defaultCase(title = "事件・捜査記録") {
     selectedCharacterId: initialCharacterId,
     openCharacterIds: [initialCharacterId],
     previewCharacterId: initialCharacterId,
-    splitCharacterIds: [],
+    splitTabIds: [],
     selectedMapId: "1f",
     textareaHeights: {},
     caseNote: "",
@@ -891,23 +891,34 @@ function normalizeCase(saved, fallback = defaultCase()) {
     openCharacterIds.includes(saved.previewCharacterId)
       ? saved.previewCharacterId
       : null;
-  const savedSplitCharacterIds = Array.isArray(saved.splitCharacterIds)
-    ? saved.splitCharacterIds
-    : saved.splitCharacterId
-      ? [saved.splitCharacterId]
-      : [];
-  const splitCharacterIds = [
+  const activeView = ["case", "timeline", "board"].includes(saved.activeView)
+    ? saved.activeView
+    : saved.activeView === "reference"
+      ? "board"
+      : fallback.activeView;
+  const activeTabId =
+    activeView === "board" ? selectedCharacterId : activeView;
+  const validTabIds = new Set([
+    ...RECORD_TABS.map((record) => record.id),
+    ...validCharacterIds,
+  ]);
+  const savedSplitTabIds = Array.isArray(saved.splitTabIds)
+    ? saved.splitTabIds
+    : Array.isArray(saved.splitCharacterIds)
+      ? saved.splitCharacterIds
+      : saved.splitCharacterId
+        ? [saved.splitCharacterId]
+        : [];
+  const splitTabIds = [
     ...new Set(
-      savedSplitCharacterIds.filter(
-        (id) =>
-          validCharacterIds.has(id) &&
-          id !== selectedCharacterId,
+      savedSplitTabIds.filter(
+        (id) => validTabIds.has(id) && id !== activeTabId,
       ),
     ),
   ];
-  splitCharacterIds.forEach((characterId) => {
-    if (!openCharacterIds.includes(characterId)) {
-      openCharacterIds.push(characterId);
+  splitTabIds.forEach((tabId) => {
+    if (validCharacterIds.has(tabId) && !openCharacterIds.includes(tabId)) {
+      openCharacterIds.push(tabId);
     }
   });
   const characterFiles = { ...fallback.characterFiles };
@@ -971,15 +982,11 @@ function normalizeCase(saved, fallback = defaultCase()) {
           ? "事件・捜査記録"
           : saved.title.slice(0, 60)
         : fallback.title,
-    activeView: ["case", "timeline", "board"].includes(saved.activeView)
-      ? saved.activeView
-      : saved.activeView === "reference"
-        ? "board"
-        : fallback.activeView,
+    activeView,
     selectedCharacterId,
     openCharacterIds,
     previewCharacterId,
-    splitCharacterIds,
+    splitTabIds,
     selectedMapId: MAPS.some((map) => map.id === saved.selectedMapId)
       ? saved.selectedMapId
       : fallback.selectedMapId,
@@ -1116,7 +1123,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       caseBook.activeCaseId = data.id;
       localStorage.setItem(
         STORAGE_KEYS.witchTrialCase,
-        JSON.stringify({ version: 9, ...caseBook }),
+        JSON.stringify({ version: 10, ...caseBook }),
       );
       setSaveState(true);
     } catch (error) {
@@ -1415,22 +1422,70 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     }, 180);
   }
 
+  function getActiveTabId() {
+    return data.activeView === "board"
+      ? data.selectedCharacterId
+      : data.activeView;
+  }
+
+  function getOpenTabIds() {
+    return [
+      ...RECORD_TABS.map((record) => record.id),
+      ...data.openCharacterIds,
+    ];
+  }
+
+  function getTabLabel(tabId) {
+    const record = RECORD_TABS.find((item) => item.id === tabId);
+    return record?.label || findCharacter(tabId).name;
+  }
+
+  function getNextSplitTabId() {
+    const openTabIds = getOpenTabIds();
+    const activeTabId = getActiveTabId();
+    const activeIndex = openTabIds.indexOf(activeTabId);
+    for (let offset = 1; offset < openTabIds.length; offset += 1) {
+      const tabId =
+        openTabIds[(activeIndex + offset) % openTabIds.length];
+      if (!data.splitTabIds.includes(tabId)) return tabId;
+    }
+    return null;
+  }
+
+  function selectPrimaryTab(tabId) {
+    const previousTabId = getActiveTabId();
+    const splitIndex = data.splitTabIds.indexOf(tabId);
+    if (splitIndex >= 0 && previousTabId !== tabId) {
+      data.splitTabIds[splitIndex] = previousTabId;
+      data.splitTabIds = [
+        ...new Set(data.splitTabIds.filter((id) => id !== tabId)),
+      ];
+    }
+    if (RECORD_TABS.some((record) => record.id === tabId)) {
+      data.activeView = tabId;
+    } else {
+      data.selectedCharacterId = findCharacter(tabId).id;
+      data.activeView = "board";
+    }
+  }
+
   function openRecordTab(recordId) {
     if (!RECORD_TABS.some((record) => record.id === recordId)) return;
     clearTimeout(state.tabActivationTimer);
     state.tabActivationTimer = null;
-    data.activeView = recordId;
+    selectPrimaryTab(recordId);
     persist();
     render();
   }
 
-  function renderRecordTabItems() {
+  function renderRecordTabItems(splitTabIdSet = new Set()) {
     return RECORD_TABS.map((record) => {
       const isActive = data.activeView === record.id;
+      const isSplitPane = splitTabIdSet.has(record.id);
       return `
         <div class="trial-character-tab-wrap trial-record-tab-wrap${
           isActive ? " is-active" : ""
-        }">
+        }${isSplitPane ? " is-secondary" : ""}">
           <button
             class="trial-character-tab trial-record-tab"
             type="button"
@@ -1441,19 +1496,24 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           >
             <i data-lucide="${record.icon}" aria-hidden="true"></i>
             <span>${record.label}</span>
+            ${
+              isSplitPane
+                ? '<i data-lucide="columns-2" aria-hidden="true"></i>'
+                : ""
+            }
           </button>
         </div>`;
     }).join("");
   }
 
-  function renderCharacterTabItems(splitCharacterIdSet = new Set()) {
+  function renderCharacterTabItems(splitTabIdSet = new Set()) {
     const openCharacters = data.openCharacterIds.map(findCharacter);
     return openCharacters
       .map((character) => {
         const isActive =
           data.activeView === "board" &&
           character.id === data.selectedCharacterId;
-        const isSplitPane = splitCharacterIdSet.has(character.id);
+        const isSplitPane = splitTabIdSet.has(character.id);
         const isPreview = character.id === data.previewCharacterId;
         return `
           <div class="trial-character-tab-wrap${
@@ -1504,10 +1564,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
   }
 
   function bindUnifiedTabs() {
-    const tabIds = [
-      ...RECORD_TABS.map((record) => record.id),
-      ...data.openCharacterIds,
-    ];
+    const tabIds = getOpenTabIds();
     el.view.querySelectorAll("[data-record-tab]").forEach((button) => {
       button.addEventListener("click", () => {
         openRecordTab(button.dataset.recordTab);
@@ -1552,20 +1609,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       });
   }
 
-  function selectCharacterTab(characterId) {
-    const previousCharacterId = data.selectedCharacterId;
-    const splitIndex = data.splitCharacterIds.indexOf(characterId);
-    if (splitIndex >= 0 && previousCharacterId !== characterId) {
-      data.splitCharacterIds[splitIndex] = previousCharacterId;
-      data.splitCharacterIds = [
-        ...new Set(
-          data.splitCharacterIds.filter((id) => id !== characterId),
-        ),
-      ];
-    }
-    data.selectedCharacterId = characterId;
-  }
-
   function openCharacterTab(characterId, { pinned = false } = {}) {
     clearTimeout(state.tabActivationTimer);
     state.tabActivationTimer = null;
@@ -1575,7 +1618,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         ? data.openCharacterIds.indexOf(data.previewCharacterId)
         : -1;
       if (previewIndex >= 0) {
-        data.splitCharacterIds = data.splitCharacterIds.filter(
+        data.splitTabIds = data.splitTabIds.filter(
           (id) => id !== data.previewCharacterId,
         );
         data.openCharacterIds.splice(previewIndex, 1, character.id);
@@ -1586,8 +1629,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     } else if (pinned && data.previewCharacterId === character.id) {
       data.previewCharacterId = null;
     }
-    selectCharacterTab(character.id);
-    data.activeView = "board";
+    selectPrimaryTab(character.id);
     persist();
     render();
   }
@@ -1600,202 +1642,199 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     if (data.previewCharacterId === characterId) {
       data.previewCharacterId = null;
     }
-    data.splitCharacterIds = data.splitCharacterIds.filter(
+    data.splitTabIds = data.splitTabIds.filter(
       (id) => id !== characterId,
     );
-    if (data.selectedCharacterId === characterId) {
-      const nextCharacterId =
-        data.splitCharacterIds[0] ||
+    if (
+      data.activeView === "board" &&
+      data.selectedCharacterId === characterId
+    ) {
+      const nextTabId =
+        data.splitTabIds[0] ||
         data.openCharacterIds[
           Math.min(closingIndex, data.openCharacterIds.length - 1)
         ];
-      data.selectedCharacterId = nextCharacterId;
-      data.splitCharacterIds = data.splitCharacterIds.filter(
-        (id) => id !== nextCharacterId,
-      );
+      data.splitTabIds = data.splitTabIds.filter((id) => id !== nextTabId);
+      if (RECORD_TABS.some((record) => record.id === nextTabId)) {
+        data.activeView = nextTabId;
+        data.selectedCharacterId =
+          data.openCharacterIds[
+            Math.min(closingIndex, data.openCharacterIds.length - 1)
+          ];
+      } else {
+        data.selectedCharacterId = nextTabId;
+      }
+    } else if (data.selectedCharacterId === characterId) {
+      data.selectedCharacterId =
+        data.openCharacterIds[
+          Math.min(closingIndex, data.openCharacterIds.length - 1)
+        ];
     }
     persist();
     render();
   }
 
-  function addCharacterSplit() {
-    const nextCharacterId = [...data.openCharacterIds]
-      .reverse()
-      .find(
-        (characterId) =>
-          characterId !== data.selectedCharacterId &&
-          !data.splitCharacterIds.includes(characterId),
-      );
-    if (!nextCharacterId) return;
-    data.splitCharacterIds.push(nextCharacterId);
-    if (data.previewCharacterId === nextCharacterId) {
+  function addTabSplit() {
+    const nextTabId = getNextSplitTabId();
+    if (!nextTabId) return;
+    data.splitTabIds.push(nextTabId);
+    if (data.previewCharacterId === nextTabId) {
       data.previewCharacterId = null;
     }
     persist();
-    renderBoard();
+    renderView();
     renderCharacterList();
-    iconRefresh();
   }
 
-  function removeCharacterSplit(characterId) {
-    data.splitCharacterIds = data.splitCharacterIds.filter(
-      (id) => id !== characterId,
+  function removeTabSplit(tabId) {
+    data.splitTabIds = data.splitTabIds.filter(
+      (id) => id !== tabId,
     );
     persist();
-    renderBoard();
+    renderView();
     renderCharacterList();
-    iconRefresh();
   }
 
-  function closeCharacterSplits() {
-    if (!data.splitCharacterIds.length) return;
-    data.splitCharacterIds = [];
+  function closeTabSplits() {
+    if (!data.splitTabIds.length) return;
+    data.splitTabIds = [];
     persist();
-    renderBoard();
+    renderView();
     renderCharacterList();
-    iconRefresh();
   }
 
   function renderView() {
     state.characterEditors.forEach((editor) => editor.toTextArea());
     state.characterEditors = [];
     el.view.classList.add("is-board");
-    if (data.activeView === "board") {
-      renderBoard();
-    } else {
-      renderCaseFile(data.activeView);
-    }
+    renderWorkspace();
     iconRefresh();
   }
 
-  function renderCaseFile(recordId) {
+  function renderRecordDossier(recordId, paneId) {
     const record =
       RECORD_TABS.find((item) => item.id === recordId) || RECORD_TABS[0];
     const note = data[record.noteKey];
     const hasNote = Boolean(note.trim());
-    el.view.innerHTML = `
-      <div class="trial-board-shell">
-        <div class="trial-character-tabs">
-          <div
-            class="trial-character-tab-list"
-            role="tablist"
-            aria-label="事件記録、時系列メモ、人物別事件メモ"
-          >
-            ${renderRecordTabItems()}
-            ${renderCharacterTabItems()}
-          </div>
-        </div>
-        <div class="trial-dossier-pane">
-          <div class="trial-content-page trial-case-file">
-            <div class="trial-page-heading trial-investigation-heading">
-              <div>
-                <p class="trial-kicker">${record.kicker}</p>
-                <h2>${record.label}</h2>
-                <p>${record.description}</p>
-              </div>
-              <div class="trial-page-icon">
-                <i data-lucide="${record.icon}" aria-hidden="true"></i>
-              </div>
+    const editorId = `trial-${paneId}-${record.id}-note`;
+    return `
+      <section class="trial-dossier trial-record-dossier">
+        <div class="trial-dossier-body">
+          <div class="trial-page-heading trial-investigation-heading">
+            <div>
+              <p class="trial-kicker">${record.kicker}</p>
+              <h2>${record.label}</h2>
+              <p>${record.description}</p>
             </div>
-            <section class="trial-character-editor trial-case-editor${hasNote ? " has-value" : ""}">
-              <div class="trial-character-editor-heading">
-                <label for="trial-${record.id}-note">
-                  <i data-lucide="${record.editorIcon}" aria-hidden="true"></i>
-                  <span>
-                    <strong>${record.label}</strong>
-                    <small>Markdown / Vim キーバインド対応</small>
-                  </span>
-                </label>
-                <button
-                  class="trial-template-button"
-                  type="button"
-                  data-insert-record-template="${record.id}"
-                  aria-label="${record.label}のテンプレートを挿入"
-                >
-                  <i data-lucide="list-plus" aria-hidden="true"></i>
-                  型を挿入
-                </button>
-              </div>
-              ${renderAnnotationToolbar(data.characterFiles)}
-              <div class="trial-character-vim-editor trial-case-vim-editor">
-                <textarea
-                  id="trial-${record.id}-note"
-                  data-record-note="${record.id}"
-                  aria-label="${record.label}"
-                  placeholder="${escapeHtml(record.placeholder)}"
-                >${escapeHtml(note)}</textarea>
-              </div>
-              <div class="trial-character-editor-status">
+            <div class="trial-page-icon">
+              <i data-lucide="${record.icon}" aria-hidden="true"></i>
+            </div>
+          </div>
+          <section class="trial-character-editor trial-case-editor${hasNote ? " has-value" : ""}">
+            <div class="trial-character-editor-heading">
+              <label for="${editorId}">
+                <i data-lucide="${record.editorIcon}" aria-hidden="true"></i>
                 <span>
-                  <b data-record-vim-mode>NORMAL</b>
-                  <i data-record-cursor>1:1</i>
+                  <strong>${record.label}</strong>
+                  <small>Markdown / Vim キーバインド対応</small>
                 </span>
-                <small data-record-note-count>${note.length.toLocaleString("ja-JP")} 文字</small>
-              </div>
-            </section>
-            <div class="trial-dossier-foot trial-case-editor-foot">
-              <span><i data-lucide="keyboard" aria-hidden="true"></i><code>jj</code> でNORMAL、<code>:w</code> で保存</span>
-              <span><i data-lucide="save" aria-hidden="true"></i>入力内容は自動保存</span>
+              </label>
+              <button
+                class="trial-template-button"
+                type="button"
+                data-insert-record-template="${record.id}"
+                aria-label="${record.label}のテンプレートを挿入"
+              >
+                <i data-lucide="list-plus" aria-hidden="true"></i>
+                型を挿入
+              </button>
             </div>
+            ${renderAnnotationToolbar(data.characterFiles)}
+            <div class="trial-character-vim-editor trial-case-vim-editor">
+              <textarea
+                id="${editorId}"
+                data-record-note="${record.id}"
+                aria-label="${record.label}"
+                placeholder="${escapeHtml(record.placeholder)}"
+              >${escapeHtml(note)}</textarea>
+            </div>
+            <div class="trial-character-editor-status">
+              <span>
+                <b data-record-vim-mode>NORMAL</b>
+                <i data-record-cursor>1:1</i>
+              </span>
+              <small data-record-note-count>${note.length.toLocaleString("ja-JP")} 文字</small>
+            </div>
+          </section>
+          <div class="trial-dossier-foot trial-case-editor-foot">
+            <span><i data-lucide="keyboard" aria-hidden="true"></i><code>jj</code> でNORMAL、<code>:w</code> で保存</span>
+            <span><i data-lucide="save" aria-hidden="true"></i>入力内容は自動保存</span>
           </div>
         </div>
-      </div>`;
-    bindUnifiedTabs();
-    const textarea = el.view.querySelector("[data-record-note]");
-    const section = textarea.closest(".trial-character-editor");
-    const mode = section.querySelector("[data-record-vim-mode]");
-    const cursor = section.querySelector("[data-record-cursor]");
-    const count = section.querySelector("[data-record-note-count]");
-    const editor = createVimMarkdownEditor(textarea, {
-      onSave: () => {
-        persist();
-        toast(`${record.label}を保存しました`);
-      },
-      onClearSearch: () => {
-        clearVimSearch(editor);
-        toast("検索ハイライトを解除しました");
-      },
-    });
-    state.characterEditors.push(editor);
-    enableLineAnnotations(editor, section, data[record.annotationsKey], {
-      onChange: schedulePersist,
-      onAdded: (annotation) => {
-        const label =
-          annotation.type === "character"
-            ? findCharacter(annotation.refId).name
-            : NOTE_BADGES.find((badge) => badge.id === annotation.refId)?.label;
-        toast(`${label}を行に付けました`);
-      },
-      onInlineAdded: (character) => {
-        toast(`${character.name}のアイコンを文中へ挿入しました`);
-      },
-    });
-    editor.on("change", () => {
-      const wasFilled = Boolean(data[record.noteKey].trim());
-      data[record.noteKey] = editor.getValue();
-      const isFilled = Boolean(data[record.noteKey].trim());
-      section.classList.toggle("has-value", isFilled);
-      count.textContent = `${data[record.noteKey].length.toLocaleString("ja-JP")} 文字`;
-      schedulePersist();
-      if (wasFilled !== isFilled) renderCharacterList();
-    });
-    editor.on("cursorActivity", () => {
-      const position = editor.getCursor();
-      cursor.textContent = `${position.line + 1}:${position.ch + 1}`;
-    });
-    editor.on("vim-mode-change", (nextMode) => {
-      mode.textContent = (nextMode.mode || "normal").toUpperCase();
-    });
-    el.view
-      .querySelector("[data-insert-record-template]")
-      .addEventListener("click", () => {
-        const insertion = editor.getValue().trim()
-          ? `\n\n${record.template}`
-          : record.template;
-        editor.replaceSelection(insertion, "end");
-        editor.focus();
+      </section>`;
+  }
+
+  function mountRecordEditors() {
+    el.view.querySelectorAll("[data-record-note]").forEach((textarea) => {
+      const record = RECORD_TABS.find(
+        (item) => item.id === textarea.dataset.recordNote,
+      );
+      if (!record) return;
+      const section = textarea.closest(".trial-character-editor");
+      const mode = section.querySelector("[data-record-vim-mode]");
+      const cursor = section.querySelector("[data-record-cursor]");
+      const count = section.querySelector("[data-record-note-count]");
+      const editor = createVimMarkdownEditor(textarea, {
+        onSave: () => {
+          persist();
+          toast(`${record.label}を保存しました`);
+        },
+        onClearSearch: () => {
+          clearVimSearch(editor);
+          toast("検索ハイライトを解除しました");
+        },
       });
-    editor.refresh();
+      state.characterEditors.push(editor);
+      enableLineAnnotations(editor, section, data[record.annotationsKey], {
+        onChange: schedulePersist,
+        onAdded: (annotation) => {
+          const label =
+            annotation.type === "character"
+              ? findCharacter(annotation.refId).name
+              : NOTE_BADGES.find((badge) => badge.id === annotation.refId)?.label;
+          toast(`${label}を行に付けました`);
+        },
+        onInlineAdded: (character) => {
+          toast(`${character.name}のアイコンを文中へ挿入しました`);
+        },
+      });
+      editor.on("change", () => {
+        const wasFilled = Boolean(data[record.noteKey].trim());
+        data[record.noteKey] = editor.getValue();
+        const isFilled = Boolean(data[record.noteKey].trim());
+        section.classList.toggle("has-value", isFilled);
+        count.textContent = `${data[record.noteKey].length.toLocaleString("ja-JP")} 文字`;
+        schedulePersist();
+        if (wasFilled !== isFilled) renderCharacterList();
+      });
+      editor.on("cursorActivity", () => {
+        const position = editor.getCursor();
+        cursor.textContent = `${position.line + 1}:${position.ch + 1}`;
+      });
+      editor.on("vim-mode-change", (nextMode) => {
+        mode.textContent = (nextMode.mode || "normal").toUpperCase();
+      });
+      section
+        .querySelector("[data-insert-record-template]")
+        .addEventListener("click", () => {
+          const insertion = editor.getValue().trim()
+            ? `\n\n${record.template}`
+            : record.template;
+          editor.replaceSelection(insertion, "end");
+          editor.focus();
+        });
+      editor.refresh();
+    });
   }
 
   function renderCharacterDossier(character, paneId) {
@@ -1934,19 +1973,11 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       });
   }
 
-  function renderBoard() {
-    const primaryCharacter = findCharacter(data.selectedCharacterId);
-    const splitCharacters = data.splitCharacterIds.map(findCharacter);
-    const paneCharacters = [primaryCharacter, ...splitCharacters];
-    const splitCharacterIdSet = new Set(data.splitCharacterIds);
-    const openCharacters = data.openCharacterIds.map(findCharacter);
-    const nextSplitCharacter = [...openCharacters]
-      .reverse()
-      .find(
-        (character) =>
-          character.id !== primaryCharacter.id &&
-          !splitCharacterIdSet.has(character.id),
-      );
+  function renderWorkspace() {
+    const activeTabId = getActiveTabId();
+    const paneTabIds = [activeTabId, ...data.splitTabIds];
+    const splitTabIdSet = new Set(data.splitTabIds);
+    const nextSplitTabId = getNextSplitTabId();
     el.view.innerHTML = `
       <div class="trial-board-shell">
         <div class="trial-character-tabs">
@@ -1955,32 +1986,32 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
             role="tablist"
             aria-label="事件記録、時系列メモ、人物別事件メモ"
           >
-            ${renderRecordTabItems()}
-            ${renderCharacterTabItems(splitCharacterIdSet)}
+            ${renderRecordTabItems(splitTabIdSet)}
+            ${renderCharacterTabItems(splitTabIdSet)}
           </div>
           <div class="trial-character-tab-actions">
             <button
               class="trial-split-button"
               type="button"
-              data-add-character-split
+              data-add-tab-split
               aria-label="分割ペインを追加"
               data-tooltip="${
-                nextSplitCharacter
-                  ? `${escapeHtml(nextSplitCharacter.name)}を分割ペインに追加`
-                  : "分割できる人物タブがありません"
+                nextSplitTabId
+                  ? `${escapeHtml(getTabLabel(nextSplitTabId))}を分割ペインに追加`
+                  : "分割できるタブがありません"
               }"
-              ${nextSplitCharacter ? "" : "disabled"}
+              ${nextSplitTabId ? "" : "disabled"}
             >
               <i data-lucide="columns-3" aria-hidden="true"></i>
               <span>分割を追加</span>
             </button>
             ${
-              splitCharacters.length
+              data.splitTabIds.length
                 ? `
                   <button
                     class="trial-split-button is-active"
                     type="button"
-                    data-close-character-splits
+                    data-close-tab-splits
                     aria-label="分割表示を終了"
                     data-tooltip="分割表示を終了"
                   >
@@ -1992,27 +2023,27 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           </div>
         </div>
         <div
-          class="trial-dossier-grid${splitCharacters.length ? " is-split" : ""}${
-            paneCharacters.length >= 3 ? " is-multi-split" : ""
+          class="trial-dossier-grid${data.splitTabIds.length ? " is-split" : ""}${
+            paneTabIds.length >= 3 ? " is-multi-split" : ""
           }"
-          style="--trial-pane-count:${paneCharacters.length}"
+          style="--trial-pane-count:${paneTabIds.length}"
         >
-          ${paneCharacters
+          ${paneTabIds
             .map(
-              (character, index) => `
+              (tabId, index) => `
                 <article
                   class="trial-dossier-pane${index === 0 ? " is-primary" : " is-secondary"}"
-                  aria-label="${escapeHtml(character.name)}の人物ファイル"
+                  aria-label="${escapeHtml(getTabLabel(tabId))}"
                 >
                   ${
                     index > 0
                       ? `
                         <div class="trial-dossier-pane-toolbar">
-                          <span>${escapeHtml(character.name)}</span>
+                          <span>${escapeHtml(getTabLabel(tabId))}</span>
                           <button
                             type="button"
-                            data-remove-character-split="${character.id}"
-                            aria-label="${escapeHtml(character.name)}の分割ペインを閉じる"
+                            data-remove-tab-split="${tabId}"
+                            aria-label="${escapeHtml(getTabLabel(tabId))}の分割ペインを閉じる"
                             data-tooltip="この分割ペインを閉じる"
                           >
                             <i data-lucide="x" aria-hidden="true"></i>
@@ -2021,7 +2052,14 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                       : ""
                   }
                   <div class="trial-dashboard">
-                    ${renderCharacterDossier(character, `pane-${index}`)}
+                    ${
+                      RECORD_TABS.some((record) => record.id === tabId)
+                        ? renderRecordDossier(tabId, `pane-${index}`)
+                        : renderCharacterDossier(
+                            findCharacter(tabId),
+                            `pane-${index}`,
+                          )
+                    }
                   </div>
                 </article>`,
             )
@@ -2031,19 +2069,20 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
 
     bindUnifiedTabs();
     el.view
-      .querySelector("[data-add-character-split]")
-      .addEventListener("click", addCharacterSplit);
+      .querySelector("[data-add-tab-split]")
+      .addEventListener("click", addTabSplit);
     el.view
-      .querySelector("[data-close-character-splits]")
-      ?.addEventListener("click", closeCharacterSplits);
+      .querySelector("[data-close-tab-splits]")
+      ?.addEventListener("click", closeTabSplits);
     el.view
-      .querySelectorAll("[data-remove-character-split]")
+      .querySelectorAll("[data-remove-tab-split]")
       .forEach((button) => {
         button.addEventListener("click", () => {
-          removeCharacterSplit(button.dataset.removeCharacterSplit);
+          removeTabSplit(button.dataset.removeTabSplit);
         });
       });
 
+    mountRecordEditors();
     mountCharacterEditors();
     el.view
       .querySelectorAll("[data-character-deceased]")

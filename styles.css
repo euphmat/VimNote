@@ -3434,12 +3434,12 @@ input:focus-visible,
   padding-right: 10px;
 }
 
-.trial-record-tab > svg {
+.trial-character-tab.trial-record-tab > svg:first-child {
   width: 15px;
   height: 15px;
 }
 
-.trial-record-tab[data-record-tab="timeline"] > svg {
+.trial-record-tab[data-record-tab="timeline"] > svg:first-child {
   color: var(--trial-gold);
 }
 
