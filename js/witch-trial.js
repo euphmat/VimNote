@@ -98,6 +98,13 @@ const CASE_FIELDS = Object.freeze([
   },
 ]);
 
+const CASE_NOTE_PLACEHOLDER =
+  "# 事件記録\n\n事件の概要、死因・凶器・現場、時系列、手がかり、魔女裁判の争点を自由に記録";
+
+const CASE_NOTE_TEMPLATE = CASE_FIELDS.map(
+  (field) => `## ${field.label}\n\n${field.template}`,
+).join("\n\n");
+
 const CHARACTER_FIELDS = Object.freeze([
   {
     key: "basicInfo",
@@ -193,7 +200,7 @@ function defaultCase(title = "事件・捜査記録") {
     splitCharacterIds: [],
     selectedMapId: "1f",
     textareaHeights: {},
-    caseFile: Object.fromEntries(CASE_FIELDS.map((field) => [field.key, ""])),
+    caseNote: "",
     characterFiles: Object.fromEntries(
       CHARACTERS.map((character) => [
         character.id,
@@ -277,6 +284,15 @@ function normalizeCase(saved, fallback = defaultCase()) {
       isDead: file.isDead === true,
     };
   });
+  const legacyCaseNote = CASE_FIELDS.flatMap((field) => {
+    const value =
+      typeof saved.caseFile?.[field.key] === "string"
+        ? saved.caseFile[field.key].trim()
+        : "";
+    return value ? [`## ${field.label}`, "", value, ""] : [];
+  })
+    .join("\n")
+    .trim();
   return {
     id:
       typeof saved.id === "string" && saved.id
@@ -288,9 +304,11 @@ function normalizeCase(saved, fallback = defaultCase()) {
           ? "事件・捜査記録"
           : saved.title.slice(0, 60)
         : fallback.title,
-    activeView: ["case", "board", "reference"].includes(saved.activeView)
+    activeView: ["case", "board"].includes(saved.activeView)
       ? saved.activeView
-      : fallback.activeView,
+      : saved.activeView === "reference"
+        ? "board"
+        : fallback.activeView,
     selectedCharacterId,
     openCharacterIds,
     previewCharacterId,
@@ -310,14 +328,10 @@ function normalizeCase(saved, fallback = defaultCase()) {
           height <= 5000,
       ),
     ),
-    caseFile: Object.fromEntries(
-      CASE_FIELDS.map((field) => [
-        field.key,
-        typeof saved.caseFile?.[field.key] === "string"
-          ? saved.caseFile[field.key].slice(0, 10000)
-          : "",
-      ]),
-    ),
+    caseNote:
+      typeof saved.caseNote === "string"
+        ? saved.caseNote
+        : legacyCaseNote,
     characterFiles,
     mapNotes: Object.fromEntries(
       MAPS.map((map) => [
@@ -407,7 +421,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     caseSelect: document.querySelector("#trial-case-select"),
     newCaseButton: document.querySelector("#trial-new-case-button"),
     saveState: document.querySelector("#trial-save-state"),
-    tabs: [...document.querySelectorAll("[data-trial-view]")],
     view: document.querySelector("#trial-view"),
     mapButton: document.querySelector("#trial-map-button"),
     mapMobileButton: document.querySelector("#trial-map-mobile-button"),
@@ -439,7 +452,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       caseBook.activeCaseId = data.id;
       localStorage.setItem(
         STORAGE_KEYS.witchTrialCase,
-        JSON.stringify({ version: 7, ...caseBook }),
+        JSON.stringify({ version: 8, ...caseBook }),
       );
       setSaveState(true);
     } catch (error) {
@@ -631,7 +644,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     el.caseTitle.value = data.title;
     renderCaseSwitcher();
     renderCharacterList();
-    renderTabs();
     renderView();
     iconRefresh();
   }
