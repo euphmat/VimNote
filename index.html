@@ -433,11 +433,28 @@
           </header>
 
           <nav class="trial-tabs" aria-label="捜査メニュー">
-            <button class="is-active" data-trial-view="board" type="button">
-              <i data-lucide="scan-search" aria-hidden="true"></i>推理ボード
+            <button class="is-active" data-trial-view="case" type="button">
+              <i data-lucide="clipboard-list" aria-hidden="true"></i>事件記録
+            </button>
+            <button data-trial-view="board" type="button">
+              <i data-lucide="scan-search" aria-hidden="true"></i>人物捜査
             </button>
             <button data-trial-view="reference" type="button">
               <i data-lucide="book-open-text" aria-hidden="true"></i>裁判資料
+            </button>
+            <button
+              id="trial-map-mobile-button"
+              class="trial-mobile-action"
+              type="button"
+            >
+              <i data-lucide="map" aria-hidden="true"></i>マップ
+            </button>
+            <button
+              id="trial-export-mobile-button"
+              class="trial-mobile-action"
+              type="button"
+            >
+              <i data-lucide="download" aria-hidden="true"></i>書き出し
             </button>
           </nav>
 
@@ -449,11 +466,18 @@
           class="trial-modal trial-map-dialog"
           aria-labelledby="trial-map-dialog-title"
         >
-          <header class="trial-modal-heading">
-            <div>
-              <p class="trial-kicker">PRISON MANOR / LOCATION</p>
-              <h2 id="trial-map-dialog-title">屋敷マップ</h2>
-              <p>現場、移動経路、目撃場所を確認しながら記録できます。</p>
+          <header
+            class="trial-modal-heading"
+            data-dialog-drag-handle
+            title="ドラッグして移動"
+          >
+            <div class="trial-modal-heading-copy">
+              <i class="trial-modal-grip" data-lucide="grip-vertical" aria-hidden="true"></i>
+              <div>
+                <p class="trial-kicker">PRISON MANOR / LOCATION</p>
+                <h2 id="trial-map-dialog-title">屋敷マップ</h2>
+                <p>見出しをドラッグして、好きな位置へ移動できます。</p>
+              </div>
             </div>
             <button
               class="trial-modal-close"
@@ -472,11 +496,18 @@
           class="trial-modal trial-rules-dialog"
           aria-labelledby="trial-rules-dialog-title"
         >
-          <header class="trial-modal-heading">
-            <div>
-              <p class="trial-kicker">REFERENCE / REGULATIONS</p>
-              <h2 id="trial-rules-dialog-title">規則.md</h2>
-              <p>牢屋敷で適用される規則と時間割の全文です。</p>
+          <header
+            class="trial-modal-heading"
+            data-dialog-drag-handle
+            title="ドラッグして移動"
+          >
+            <div class="trial-modal-heading-copy">
+              <i class="trial-modal-grip" data-lucide="grip-vertical" aria-hidden="true"></i>
+              <div>
+                <p class="trial-kicker">REFERENCE / REGULATIONS</p>
+                <h2 id="trial-rules-dialog-title">規則.md</h2>
+                <p>見出しをドラッグして、好きな位置へ移動できます。</p>
+              </div>
             </div>
             <button
               class="trial-modal-close"
@@ -610,7 +641,7 @@
             <div>
               <p class="settings-mode-title">魔法少女ノ魔女裁判モード</p>
               <p class="settings-mode-description">
-                人物、証言、事実、屋敷マップをひとつの事件ファイルで整理します。
+                事件概要、魔法・トラウマ、アリバイ、証言の矛盾をひとつの事件ファイルで整理します。
               </p>
             </div>
             <label class="settings-switch">
@@ -620,8 +651,9 @@
             </label>
           </div>
           <div class="settings-feature-list">
-            <span><i data-lucide="users" aria-hidden="true"></i>人物ファイル</span>
-            <span><i data-lucide="badge-check" aria-hidden="true"></i>事実の記録</span>
+            <span><i data-lucide="clipboard-list" aria-hidden="true"></i>事件記録</span>
+            <span><i data-lucide="sparkles" aria-hidden="true"></i>魔法・トラウマ</span>
+            <span><i data-lucide="git-compare-arrows" aria-hidden="true"></i>証言の矛盾</span>
             <span><i data-lucide="map" aria-hidden="true"></i>フロア記録</span>
           </div>
         </div>

@@ -39,6 +39,129 @@ const MAPS = Object.freeze([
   { id: "2f", name: "2F", image: "./Assets/Boards/2F.jpg" },
 ]);
 
+const CASE_FIELDS = Object.freeze([
+  {
+    key: "incident",
+    label: "事件の概要",
+    hint: "被害者・発見者・発見時刻・発見場所",
+    icon: "siren",
+    placeholder:
+      "被害者：\n発見者：\n発見時刻：\n発見場所：\n第一発見時の状況：",
+    template:
+      "被害者：\n発見者：\n発見時刻：\n発見場所：\n第一発見時の状況：",
+  },
+  {
+    key: "cause",
+    label: "死因・凶器・現場",
+    hint: "遺体と現場から確認できること",
+    icon: "scan-line",
+    placeholder:
+      "推定死因：\n凶器／手段：\n遺体の状態：\n現場に残された痕跡：\n不自然な点：",
+    template:
+      "推定死因：\n凶器／手段：\n遺体の状態：\n現場に残された痕跡：\n不自然な点：",
+  },
+  {
+    key: "timeline",
+    label: "事件時系列",
+    hint: "自由時間・見回り・発見までを時刻順に",
+    icon: "clock-3",
+    placeholder:
+      "[時刻] 出来事／人物／場所\n[時刻] 出来事／人物／場所\n[時刻] 遺体発見",
+    template: "[時刻] 人物｜場所｜行動\n[時刻] 人物｜場所｜行動",
+    wide: true,
+  },
+  {
+    key: "evidence",
+    label: "手がかり一覧",
+    hint: "出所と、それが証明する範囲をセットで",
+    icon: "fingerprint",
+    placeholder:
+      "・手がかり：\n  発見場所／証言者：\n  証明できること：\n  まだ証明できないこと：",
+    template:
+      "・手がかり：\n  発見場所／証言者：\n  証明できること：\n  まだ証明できないこと：",
+    wide: true,
+  },
+  {
+    key: "trialIssue",
+    label: "魔女裁判の争点",
+    hint: "議論で証明すべき問いと反証",
+    icon: "scale",
+    placeholder:
+      "主な争点：\n有力な魔女候補：\n決め手になる矛盾：\n想定される反論：\n不足している証拠：",
+    template:
+      "主な争点：\n有力な魔女候補：\n決め手になる矛盾：\n想定される反論：\n不足している証拠：",
+    wide: true,
+  },
+]);
+
+const CHARACTER_FIELDS = Object.freeze([
+  {
+    key: "basicInfo",
+    label: "人物・関係",
+    hint: "性格・経歴・他の囚人との関係",
+    icon: "contact",
+    placeholder:
+      "人物像：\n親しい囚人：\n対立／警戒している相手：\n事件に関わる利害：",
+    template:
+      "人物像：\n親しい囚人：\n対立／警戒している相手：\n事件に関わる利害：",
+  },
+  {
+    key: "magicTrauma",
+    label: "魔法・トラウマ",
+    hint: "能力の発現条件・制約・代償と心の傷",
+    icon: "sparkles",
+    placeholder:
+      "魔法：\n発現条件：\n効果範囲：\n制約／代償：\nトラウマ：\n情報の出所：",
+    template:
+      "魔法：\n発現条件：\n効果範囲：\n制約／代償：\nトラウマ：\n情報の出所：",
+  },
+  {
+    key: "testimony",
+    label: "証言・時系列",
+    hint: "誰が、いつ、どこで、何を語ったか",
+    icon: "messages-square",
+    placeholder:
+      "[時刻／場所]\n発言：\n証言者：\n裏付け：\n気になる言い回し：",
+    template:
+      "[時刻／場所]\n発言：\n証言者：\n裏付け：\n気になる言い回し：",
+  },
+  {
+    key: "alibi",
+    label: "アリバイ",
+    hint: "事件推定時刻の居場所と空白時間",
+    icon: "map-pinned",
+    placeholder:
+      "事件推定時刻：\n居場所：\n同行者／裏付け：\n目撃された時刻：\n説明できない空白：",
+    template:
+      "事件推定時刻：\n居場所：\n同行者／裏付け：\n目撃された時刻：\n説明できない空白：",
+  },
+  {
+    key: "contradictions",
+    label: "矛盾・嘘",
+    hint: "発言と手がかりの食い違い",
+    icon: "git-compare-arrows",
+    placeholder:
+      "本人の主張：\n食い違う証言／証拠：\nなぜ矛盾するか：\n考えられる別解：",
+    template:
+      "本人の主張：\n食い違う証言／証拠：\nなぜ矛盾するか：\n考えられる別解：",
+  },
+  {
+    key: "facts",
+    label: "確定した事実",
+    hint: "推測を含めず、証拠で確認できたこと",
+    icon: "badge-check",
+    placeholder: "・[確定] 事実\n  根拠：証拠／証言\n  影響：何が否定・肯定されるか",
+    template: "・[確定] \n  根拠：\n  影響：",
+  },
+]);
+
+const SUSPICION_LEVELS = Object.freeze([
+  { id: "unknown", label: "未検討" },
+  { id: "cleared", label: "疑い薄" },
+  { id: "watch", label: "要確認" },
+  { id: "strong", label: "有力候補" },
+]);
+
 function escapeHtml(value) {
   return String(value ?? "")
     .replaceAll("&", "&amp;")
@@ -53,20 +176,25 @@ function defaultCase(title = "事件・捜査記録") {
   return {
     id: crypto.randomUUID(),
     title,
-    activeView: "board",
+    activeView: "case",
     selectedCharacterId: initialCharacterId,
     openCharacterIds: [initialCharacterId],
     previewCharacterId: initialCharacterId,
     splitCharacterIds: [],
     selectedMapId: "1f",
     textareaHeights: {},
+    caseFile: Object.fromEntries(CASE_FIELDS.map((field) => [field.key, ""])),
     characterFiles: Object.fromEntries(
       CHARACTERS.map((character) => [
         character.id,
         {
           basicInfo: "",
+          magicTrauma: "",
           testimony: "",
+          alibi: "",
+          contradictions: "",
           facts: "",
+          suspicion: "unknown",
           isDead: false,
         },
       ]),
@@ -133,9 +261,23 @@ function normalizeCase(saved, fallback = defaultCase()) {
         typeof file.basicInfo === "string"
           ? file.basicInfo.slice(0, 10000)
           : legacyDetails.slice(0, 10000),
+      magicTrauma:
+        typeof file.magicTrauma === "string"
+          ? file.magicTrauma.slice(0, 10000)
+          : "",
       testimony:
         typeof file.testimony === "string" ? file.testimony.slice(0, 10000) : "",
+      alibi: typeof file.alibi === "string" ? file.alibi.slice(0, 10000) : "",
+      contradictions:
+        typeof file.contradictions === "string"
+          ? file.contradictions.slice(0, 10000)
+          : "",
       facts: typeof file.facts === "string" ? file.facts.slice(0, 10000) : "",
+      suspicion: SUSPICION_LEVELS.some(
+        (level) => level.id === file.suspicion,
+      )
+        ? file.suspicion
+        : "unknown",
       isDead: file.isDead === true,
     };
   });
@@ -150,7 +292,7 @@ function normalizeCase(saved, fallback = defaultCase()) {
           ? "事件・捜査記録"
           : saved.title.slice(0, 60)
         : fallback.title,
-    activeView: ["board", "reference"].includes(saved.activeView)
+    activeView: ["case", "board", "reference"].includes(saved.activeView)
       ? saved.activeView
       : fallback.activeView,
     selectedCharacterId,
@@ -170,6 +312,14 @@ function normalizeCase(saved, fallback = defaultCase()) {
           height >= 40 &&
           height <= 5000,
       ),
+    ),
+    caseFile: Object.fromEntries(
+      CASE_FIELDS.map((field) => [
+        field.key,
+        typeof saved.caseFile?.[field.key] === "string"
+          ? saved.caseFile[field.key].slice(0, 10000)
+          : "",
+      ]),
     ),
     characterFiles,
     mapNotes: Object.fromEntries(
@@ -262,12 +412,14 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     tabs: [...document.querySelectorAll("[data-trial-view]")],
     view: document.querySelector("#trial-view"),
     mapButton: document.querySelector("#trial-map-button"),
+    mapMobileButton: document.querySelector("#trial-map-mobile-button"),
     mapDialog: document.querySelector("#trial-map-dialog"),
     mapDialogBody: document.querySelector("#trial-map-dialog-body"),
     rulesButton: document.querySelector("#trial-rules-button"),
     rulesDialog: document.querySelector("#trial-rules-dialog"),
     rulesContent: document.querySelector("#trial-rules-content"),
     exportButton: document.querySelector("#trial-export-button"),
+    exportMobileButton: document.querySelector("#trial-export-mobile-button"),
   };
 
   function iconRefresh() {
@@ -289,7 +441,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       caseBook.activeCaseId = data.id;
       localStorage.setItem(
         STORAGE_KEYS.witchTrialCase,
-        JSON.stringify({ version: 5, ...caseBook }),
+        JSON.stringify({ version: 6, ...caseBook }),
       );
       setSaveState(true);
     } catch (error) {
@@ -353,6 +505,93 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     );
   }
 
+  function bringFloatingDialogToFront(dialog) {
+    const otherDialog =
+      dialog === el.mapDialog ? el.rulesDialog : el.mapDialog;
+    otherDialog.style.zIndex = "100";
+    dialog.style.zIndex = "101";
+  }
+
+  function constrainFloatingDialog(dialog, useInitialPosition = false) {
+    if (!dialog.open) return;
+    const edge = 8;
+    const rect = dialog.getBoundingClientRect();
+    const initialOffset = dialog === el.rulesDialog ? 42 : 20;
+    const left = useInitialPosition
+      ? window.innerWidth - rect.width - initialOffset
+      : rect.left;
+    const top = useInitialPosition
+      ? dialog === el.rulesDialog
+        ? 104
+        : 80
+      : rect.top;
+    const maxLeft = Math.max(edge, window.innerWidth - rect.width - edge);
+    const maxTop = Math.max(edge, window.innerHeight - rect.height - edge);
+
+    dialog.style.right = "auto";
+    dialog.style.left = `${Math.min(Math.max(edge, left), maxLeft)}px`;
+    dialog.style.top = `${Math.min(Math.max(edge, top), maxTop)}px`;
+    dialog.dataset.positioned = "true";
+  }
+
+  function openFloatingDialog(dialog) {
+    if (!dialog.open) dialog.show();
+    bringFloatingDialogToFront(dialog);
+    requestAnimationFrame(() => {
+      constrainFloatingDialog(dialog, !dialog.dataset.positioned);
+    });
+  }
+
+  function makeFloatingDialogDraggable(dialog) {
+    const handle = dialog.querySelector("[data-dialog-drag-handle]");
+    if (!handle) return;
+    let drag = null;
+
+    handle.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0 || event.target.closest("button")) return;
+      const rect = dialog.getBoundingClientRect();
+      drag = {
+        pointerId: event.pointerId,
+        startX: event.clientX,
+        startY: event.clientY,
+        left: rect.left,
+        top: rect.top,
+      };
+      bringFloatingDialogToFront(dialog);
+      dialog.classList.add("is-dragging");
+      handle.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    });
+
+    handle.addEventListener("pointermove", (event) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      const edge = 8;
+      const rect = dialog.getBoundingClientRect();
+      const maxLeft = Math.max(edge, window.innerWidth - rect.width - edge);
+      const maxTop = Math.max(edge, window.innerHeight - rect.height - edge);
+      const left = drag.left + event.clientX - drag.startX;
+      const top = drag.top + event.clientY - drag.startY;
+      dialog.style.right = "auto";
+      dialog.style.left = `${Math.min(Math.max(edge, left), maxLeft)}px`;
+      dialog.style.top = `${Math.min(Math.max(edge, top), maxTop)}px`;
+    });
+
+    const stopDragging = (event) => {
+      if (!drag || event.pointerId !== drag.pointerId) return;
+      if (handle.hasPointerCapture(event.pointerId)) {
+        handle.releasePointerCapture(event.pointerId);
+      }
+      drag = null;
+      dialog.dataset.positioned = "true";
+      dialog.classList.remove("is-dragging");
+    };
+    handle.addEventListener("pointerup", stopDragging);
+    handle.addEventListener("pointercancel", stopDragging);
+    dialog.addEventListener("pointerdown", () => {
+      bringFloatingDialogToFront(dialog);
+    });
+  }
+
   function setEnabled(enabled, announce = true) {
     state.enabled = Boolean(enabled);
     try {
@@ -371,6 +610,11 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     el.root.classList.toggle("hidden", !state.enabled);
     el.badge.classList.toggle("hidden", !state.enabled);
     el.sidebarToggle.classList.toggle("hidden", state.enabled);
+    if (!state.enabled) {
+      [el.mapDialog, el.rulesDialog].forEach((dialog) => {
+        if (dialog.open) dialog.close();
+      });
+    }
     document
       .querySelectorAll(".standard-mode-control")
       .forEach((control) => control.classList.toggle("hidden", state.enabled));
@@ -428,10 +672,12 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       const rows = groupCharacters
         .map((character) => {
           const file = data.characterFiles[character.id];
-          const hasDetails = Boolean(
-            file.basicInfo.trim() ||
-              file.testimony.trim() ||
-              file.facts.trim()
+          const completedFields = CHARACTER_FIELDS.filter((field) =>
+            file[field.key].trim(),
+          ).length;
+          const hasDetails = completedFields > 0;
+          const suspicion = SUSPICION_LEVELS.find(
+            (level) => level.id === file.suspicion,
           );
           return `
             <button
@@ -460,7 +706,15 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                         ? "file-check-2"
                         : "file-pen-line"
                   }" aria-hidden="true"></i>
-                  ${file.isDead ? "死亡" : hasDetails ? "記録あり" : "記録未入力"}
+                  ${
+                    file.isDead
+                      ? "死亡"
+                      : file.suspicion === "strong"
+                        ? "有力候補"
+                        : hasDetails
+                          ? `${completedFields}/${CHARACTER_FIELDS.length} 記録`
+                          : suspicion.label
+                  }
                 </small>
               </span>
               <i data-lucide="${
@@ -631,15 +885,174 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     el.view.classList.toggle("is-board", data.activeView === "board");
     if (data.activeView === "reference") {
       renderReference();
+    } else if (data.activeView === "case") {
+      renderCaseFile();
     } else {
       renderBoard();
     }
     iconRefresh();
   }
 
+  function renderFieldCard({
+    field,
+    value,
+    id,
+    dataAttributes,
+    heightKey,
+    className = "",
+  }) {
+    const hasValue = Boolean(value.trim());
+    return `
+      <section class="trial-character-section${field.wide ? " is-wide" : ""}${hasValue ? " has-value" : ""}">
+        <div class="trial-field-heading">
+          <label class="trial-field-label" for="${id}">
+            <i data-lucide="${field.icon}" aria-hidden="true"></i>
+            <span class="trial-field-title">
+              <strong>${field.label}</strong>
+              <small>${field.hint}</small>
+            </span>
+          </label>
+          <button
+            class="trial-template-button"
+            type="button"
+            data-insert-template="${id}"
+            data-template="${escapeHtml(field.template)}"
+            aria-label="${field.label}の記録テンプレートを挿入"
+          >
+            <i data-lucide="list-plus" aria-hidden="true"></i>
+            型を挿入
+          </button>
+        </div>
+        <textarea
+          id="${id}"
+          class="trial-dossier-note ${className}"
+          ${dataAttributes}
+          data-textarea-height-key="${heightKey}"
+          maxlength="10000"
+          placeholder="${escapeHtml(field.placeholder)}"
+        >${escapeHtml(value)}</textarea>
+        <div class="trial-field-status">
+          <span class="${hasValue ? "is-complete" : ""}">
+            <i data-lucide="${hasValue ? "check-circle-2" : "circle-dashed"}" aria-hidden="true"></i>
+            ${hasValue ? "記録あり" : "未記録"}
+          </span>
+          <small data-character-count="${id}">${value.length.toLocaleString("ja-JP")} / 10,000</small>
+        </div>
+      </section>`;
+  }
+
+  function bindFieldEnhancements(scope) {
+    scope.querySelectorAll("[data-insert-template]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const textarea = scope.querySelector(
+          `#${CSS.escape(button.dataset.insertTemplate)}`,
+        );
+        if (!textarea) return;
+        const template = button.dataset.template;
+        const insertion = textarea.value.trim()
+          ? `\n\n${template}`
+          : template;
+        textarea.setRangeText(
+          insertion,
+          textarea.selectionStart,
+          textarea.selectionEnd,
+          "end",
+        );
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
+        textarea.focus();
+      });
+    });
+  }
+
+  function updateFieldCard(textarea) {
+    const card = textarea.closest(".trial-character-section");
+    const hasValue = Boolean(textarea.value.trim());
+    card?.classList.toggle("has-value", hasValue);
+    const status = card?.querySelector(".trial-field-status span");
+    if (status) {
+      status.classList.toggle("is-complete", hasValue);
+      status.innerHTML = `
+        <i data-lucide="${hasValue ? "check-circle-2" : "circle-dashed"}" aria-hidden="true"></i>
+        ${hasValue ? "記録あり" : "未記録"}`;
+    }
+    const count = card?.querySelector("[data-character-count]");
+    if (count) {
+      count.textContent = `${textarea.value.length.toLocaleString("ja-JP")} / 10,000`;
+    }
+    iconRefresh();
+  }
+
+  function renderCaseFile() {
+    const completed = CASE_FIELDS.filter((field) =>
+      data.caseFile[field.key].trim(),
+    ).length;
+    el.view.innerHTML = `
+      <div class="trial-content-page trial-case-file">
+        <div class="trial-page-heading trial-investigation-heading">
+          <div>
+            <p class="trial-kicker">CASE INVESTIGATION</p>
+            <h2>事件記録</h2>
+            <p>現場の事実から裁判の争点まで、捜査の順に整理します。</p>
+          </div>
+          <div class="trial-progress" aria-label="事件記録 ${completed}/${CASE_FIELDS.length} 項目">
+            <span>${completed}/${CASE_FIELDS.length}</span>
+            <div><i style="width:${(completed / CASE_FIELDS.length) * 100}%"></i></div>
+            <small>記録済み</small>
+          </div>
+        </div>
+        <div class="trial-flow-rail" aria-label="捜査の流れ">
+          <span class="is-active"><i>01</i>遺体発見</span>
+          <b aria-hidden="true"></b>
+          <span><i>02</i>現場検証</span>
+          <b aria-hidden="true"></b>
+          <span><i>03</i>証言照合</span>
+          <b aria-hidden="true"></b>
+          <span><i>04</i>魔女裁判</span>
+        </div>
+        <div class="trial-case-field-grid">
+          ${CASE_FIELDS.map((field) =>
+            renderFieldCard({
+              field,
+              value: data.caseFile[field.key],
+              id: `trial-case-${field.key}`,
+              dataAttributes: `data-case-field="${field.key}"`,
+              heightKey: `case:${field.key}`,
+              className: "trial-case-note",
+            }),
+          ).join("")}
+        </div>
+      </div>`;
+    el.view.querySelectorAll("[data-case-field]").forEach((textarea) => {
+      textarea.addEventListener("input", () => {
+        data.caseFile[textarea.dataset.caseField] = textarea.value;
+        updateFieldCard(textarea);
+        const completed = CASE_FIELDS.filter((field) =>
+          data.caseFile[field.key].trim(),
+        ).length;
+        const progress = el.view.querySelector(".trial-progress");
+        if (progress) {
+          progress.setAttribute(
+            "aria-label",
+            `事件記録 ${completed}/${CASE_FIELDS.length} 項目`,
+          );
+          progress.querySelector(":scope > span").textContent =
+            `${completed}/${CASE_FIELDS.length}`;
+          progress.querySelector("i").style.width =
+            `${(completed / CASE_FIELDS.length) * 100}%`;
+        }
+        schedulePersist();
+      });
+    });
+    bindFieldEnhancements(el.view);
+    trackTextareaHeights();
+  }
+
   function renderCharacterDossier(character, paneId) {
     const file = data.characterFiles[character.id];
     const fieldId = (field) => `trial-${paneId}-${character.id}-${field}`;
+    const completed = CHARACTER_FIELDS.filter((field) =>
+      file[field.key].trim(),
+    ).length;
     return `
         <section class="trial-dossier">
           <header class="trial-dossier-hero">
@@ -652,75 +1065,54 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                 <p class="trial-kicker">CHARACTER DOSSIER</p>
                 <h2>${escapeHtml(character.name)}</h2>
                 <p class="trial-dossier-summary">
-                  人物情報・証言・確認済みの事実を、このファイルに集約します。
+                  魔法とトラウマ、アリバイ、証言の矛盾を照合して魔女候補を検証します。
                 </p>
               </div>
+              <div class="trial-dossier-progress">
+                <strong>${completed}/${CHARACTER_FIELDS.length}</strong>
+                <span>調査項目を記録</span>
+              </div>
             </div>
-            <label class="trial-death-check">
-              <input
-                type="checkbox"
-                data-character-deceased="${character.id}"
-                ${file.isDead ? "checked" : ""}
-              />
-              <span aria-hidden="true">
-                <i data-lucide="check"></i>
-              </span>
-              <strong>死亡</strong>
-            </label>
+            <div class="trial-dossier-status">
+              <label>
+                <span>疑い</span>
+                <select data-character-suspicion="${character.id}" aria-label="${escapeHtml(character.name)}の疑い">
+                  ${SUSPICION_LEVELS.map(
+                    (level) => `
+                      <option value="${level.id}"${file.suspicion === level.id ? " selected" : ""}>
+                        ${level.label}
+                      </option>`,
+                  ).join("")}
+                </select>
+              </label>
+              <label class="trial-death-check">
+                <input
+                  type="checkbox"
+                  data-character-deceased="${character.id}"
+                  ${file.isDead ? "checked" : ""}
+                />
+                <span aria-hidden="true">
+                  <i data-lucide="check"></i>
+                </span>
+                <strong>死亡</strong>
+              </label>
+            </div>
           </header>
           <div class="trial-dossier-body">
             <div class="trial-character-sections">
-              <section class="trial-character-section">
-                <label class="trial-field-label" for="${fieldId("basic")}">
-                  <i data-lucide="contact" aria-hidden="true"></i>
-                  基本情報
-                  <span>特徴・性格・関係性・経歴</span>
-                </label>
-                <textarea
-                  id="${fieldId("basic")}"
-                  class="trial-dossier-note"
-                  data-character-id="${character.id}"
-                  data-character-field="basicInfo"
-                  data-textarea-height-key="character:${character.id}:basicInfo"
-                  maxlength="10000"
-                  placeholder="${escapeHtml(character.name)}のプロフィールや人物関係…"
-                >${escapeHtml(file.basicInfo)}</textarea>
-              </section>
-              <section class="trial-character-section">
-                <label class="trial-field-label" for="${fieldId("testimony")}">
-                  <i data-lucide="messages-square" aria-hidden="true"></i>
-                  証言
-                  <span>本人の発言・他者からの証言</span>
-                </label>
-                <textarea
-                  id="${fieldId("testimony")}"
-                  class="trial-dossier-note"
-                  data-character-id="${character.id}"
-                  data-character-field="testimony"
-                  data-textarea-height-key="character:${character.id}:testimony"
-                  maxlength="10000"
-                  placeholder="誰が、いつ、何を語ったか。引用や食い違いも記録…"
-                >${escapeHtml(file.testimony)}</textarea>
-              </section>
-              <section class="trial-character-section">
-                <label class="trial-field-label" for="${fieldId("facts")}">
-                  <i data-lucide="badge-check" aria-hidden="true"></i>
-                  事実
-                  <span>証拠から確認できた客観的な情報</span>
-                </label>
-                <textarea
-                  id="${fieldId("facts")}"
-                  class="trial-dossier-note"
-                  data-character-id="${character.id}"
-                  data-character-field="facts"
-                  data-textarea-height-key="character:${character.id}:facts"
-                  maxlength="10000"
-                  placeholder="推測と分けて、確認済みの事実だけを記録…"
-                >${escapeHtml(file.facts)}</textarea>
-              </section>
+              ${CHARACTER_FIELDS.map((field) =>
+                renderFieldCard({
+                  field,
+                  value: file[field.key],
+                  id: fieldId(field.key),
+                  dataAttributes: `data-character-id="${character.id}" data-character-field="${field.key}"`,
+                  heightKey: `character:${character.id}:${field.key}`,
+                }),
+              ).join("")}
             </div>
             <div class="trial-dossier-foot">
-              <span><i data-lucide="shield-alert" aria-hidden="true"></i>事実と推測を分けて記録</span>
+              <span><i data-lucide="shield-alert" aria-hidden="true"></i>証言・推測・確定事実を分けて記録</span>
+              <span><i data-lucide="save" aria-hidden="true"></i>入力内容は自動保存</span>
             </div>
           </div>
         </section>`;
@@ -910,8 +1302,31 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       .forEach((textarea) => {
         textarea.addEventListener("input", () => {
           const file = data.characterFiles[textarea.dataset.characterId];
+          const wasFilled = Boolean(
+            file[textarea.dataset.characterField].trim(),
+          );
           file[textarea.dataset.characterField] = textarea.value;
+          updateFieldCard(textarea);
           schedulePersist();
+          const isFilled = Boolean(textarea.value.trim());
+          const dossier = textarea.closest(".trial-dossier");
+          const completed = CHARACTER_FIELDS.filter((field) =>
+            file[field.key].trim(),
+          ).length;
+          const progress = dossier?.querySelector(".trial-dossier-progress strong");
+          if (progress) {
+            progress.textContent = `${completed}/${CHARACTER_FIELDS.length}`;
+          }
+          if (wasFilled !== isFilled) renderCharacterList();
+        });
+      });
+    el.view
+      .querySelectorAll("[data-character-suspicion]")
+      .forEach((select) => {
+        select.addEventListener("change", () => {
+          const file = data.characterFiles[select.dataset.characterSuspicion];
+          file.suspicion = select.value;
+          persist();
           renderCharacterList();
         });
       });
@@ -933,6 +1348,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           );
         });
       });
+    bindFieldEnhancements(el.view);
     trackTextareaHeights();
   }
 
@@ -944,7 +1360,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           <div>
             <p class="trial-kicker">FLOOR SELECT</p>
             <h3>${map.name} フロア</h3>
-            <p>図面と調査メモは事件ファイルごとに保存されます。</p>
+            <p>表示するフロアを切り替えられます。</p>
           </div>
           <div class="trial-floor-switch" role="group" aria-label="フロア">
             ${MAPS.map(
@@ -957,27 +1373,12 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
             ).join("")}
           </div>
         </div>
-        <div class="trial-map-layout">
-          <figure class="trial-map-figure">
-            <img src="${map.image}" alt="${map.name}の屋敷マップ" />
-            <figcaption>
-              <span><i data-lucide="map-pin" aria-hidden="true"></i>${map.name}</span>
-            </figcaption>
-          </figure>
-          <div class="trial-map-notes">
-            <div>
-              <p class="trial-kicker">FLOOR NOTES</p>
-              <h3>${map.name} 調査メモ</h3>
-            </div>
-            <textarea
-              id="trial-map-note"
-              data-textarea-height-key="map:${map.id}"
-              maxlength="3000"
-              placeholder="現場、証拠、移動経路、立入可能な時間…"
-            >${escapeHtml(data.mapNotes[map.id])}</textarea>
-            <p><i data-lucide="info" aria-hidden="true"></i>フロアを切り替えても自動保存されます</p>
-          </div>
-        </div>
+        <figure class="trial-map-figure">
+          <img src="${map.image}" alt="${map.name}の屋敷マップ" />
+          <figcaption>
+            <span><i data-lucide="map-pin" aria-hidden="true"></i>${map.name}</span>
+          </figcaption>
+        </figure>
       </div>`;
     el.mapDialogBody.querySelectorAll("[data-map-id]").forEach((button) => {
       button.addEventListener("click", () => {
@@ -986,20 +1387,12 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         renderMapDialog();
       });
     });
-    el.mapDialogBody
-      .querySelector("#trial-map-note")
-      .addEventListener("input", (event) => {
-        data.mapNotes[map.id] = event.target.value;
-        schedulePersist();
-      });
     iconRefresh();
-    if (el.mapDialog.open) requestAnimationFrame(trackTextareaHeights);
   }
 
   function openMapDialog() {
     renderMapDialog();
-    el.mapDialog.showModal();
-    requestAnimationFrame(trackTextareaHeights);
+    openFloatingDialog(el.mapDialog);
   }
 
   function renderRulesMarkdown(markdown) {
@@ -1046,7 +1439,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
   }
 
   function openRulesDialog() {
-    el.rulesDialog.showModal();
+    openFloatingDialog(el.rulesDialog);
     loadRules();
   }
 
@@ -1105,6 +1498,14 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       "",
       `書き出し日時: ${new Date().toLocaleString("ja-JP")}`,
       "",
+      "## 事件記録",
+      "",
+      ...CASE_FIELDS.flatMap((field) => [
+        `### ${field.label}`,
+        "",
+        data.caseFile[field.key] || "_記録なし_",
+        "",
+      ]),
       "## 人物記録",
       "",
     ];
@@ -1114,19 +1515,17 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         `### ${character.name}`,
         "",
         `- 死亡: ${file.isDead ? "はい" : "いいえ"}`,
+        `- 疑い: ${
+          SUSPICION_LEVELS.find((level) => level.id === file.suspicion)?.label ||
+          "未検討"
+        }`,
         "",
-        "#### 基本情報",
-        "",
-        file.basicInfo || "_記録なし_",
-        "",
-        "#### 証言",
-        "",
-        file.testimony || "_記録なし_",
-        "",
-        "#### 事実",
-        "",
-        file.facts || "_記録なし_",
-        "",
+        ...CHARACTER_FIELDS.flatMap((field) => [
+          `#### ${field.label}`,
+          "",
+          file[field.key] || "_記録なし_",
+          "",
+        ]),
       );
     });
     lines.push("## 屋敷マップ", "");
@@ -1135,8 +1534,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         `### ${map.name}`,
         "",
         `![${map.name}](${map.image})`,
-        "",
-        data.mapNotes[map.id] || "_記録なし_",
         "",
       );
     });
@@ -1209,9 +1606,39 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     });
   });
   el.mapButton.addEventListener("click", openMapDialog);
+  el.mapMobileButton.addEventListener("click", openMapDialog);
   el.rulesButton.addEventListener("click", openRulesDialog);
-  el.mapDialog.addEventListener("close", trackTextareaHeights);
+  [el.mapDialog, el.rulesDialog].forEach(makeFloatingDialogDraggable);
+  window.addEventListener("resize", () => {
+    [el.mapDialog, el.rulesDialog].forEach((dialog) => {
+      constrainFloatingDialog(dialog);
+    });
+  });
+  document.addEventListener("keydown", (event) => {
+    if (
+      event.key !== "Escape" ||
+      document.querySelector(
+        "dialog[open]:not(#trial-map-dialog):not(#trial-rules-dialog)",
+      )
+    ) {
+      return;
+    }
+    const openDialogs = [el.mapDialog, el.rulesDialog].filter(
+      (dialog) => dialog.open,
+    );
+    if (!openDialogs.length) return;
+    openDialogs
+      .sort(
+        (a, b) =>
+          Number.parseInt(a.style.zIndex || "0", 10) -
+          Number.parseInt(b.style.zIndex || "0", 10),
+      )
+      .at(-1)
+      .close();
+    event.preventDefault();
+  });
   el.exportButton.addEventListener("click", exportCase);
+  el.exportMobileButton.addEventListener("click", exportCase);
   window.addEventListener("beforeunload", persist);
   window.addEventListener("storage", (event) => {
     if (event.key === STORAGE_KEYS.witchTrialEnabled) {
