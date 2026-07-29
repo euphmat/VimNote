@@ -1263,6 +1263,11 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         event.preventDefault();
         openCharacterTab(button.dataset.characterTab, { pinned: true });
       });
+      button.addEventListener("auxclick", (event) => {
+        if (event.button !== 1) return;
+        event.preventDefault();
+        closeCharacterTab(button.dataset.characterTab);
+      });
       button.addEventListener("keydown", (event) => {
         if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
         event.preventDefault();
