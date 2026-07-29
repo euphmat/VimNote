@@ -101,6 +101,7 @@ const CHARACTERS = Object.freeze([
 
 const ANNOTATION_GUTTER = "trial-annotation-gutter";
 const ANNOTATION_MIME = "application/x-vimnote-line-annotation";
+const INLINE_CHARACTER_TITLE = "vimnote-character-icon";
 const SPEAKER_MARKER_PATTERN = new RegExp(
   `^(\\s*>\\s*\\*\\*)(${CHARACTERS.map((character) =>
     character.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
@@ -328,8 +329,8 @@ function renderAnnotationToolbar(characterFiles = {}) {
                   draggable="true"
                   data-drag-annotation-type="character"
                   data-drag-annotation-id="${character.id}"
-                  aria-label="${escapeHtml(character.name)}を現在行へ付与、または別の行へドラッグ"
-                  title="${escapeHtml(character.name)}を現在行へ付与、または別の行へドラッグ"
+                  aria-label="${escapeHtml(character.name)}を現在行へ付与、またはMarkdown文中へドラッグ"
+                  title="${escapeHtml(character.name)}を現在行へ付与、またはMarkdown文中へドラッグ"
                 >
                   <img src="${escapeHtml(character.image)}" alt="" />
                   <span>${escapeHtml(character.shortName)}</span>
@@ -378,8 +379,12 @@ function renderAnnotationToolbar(characterFiles = {}) {
           ).join("")}
         </div>
       </div>
-      <small><i data-lucide="mouse-pointer-click" aria-hidden="true"></i>クリックで現在行へ付与／ドラッグで別の行へ付与</small>
+      <small><i data-lucide="mouse-pointer-click" aria-hidden="true"></i>クリックで行へ付与／顔を文中へドラッグでアイコン挿入／ガターへドラッグで行へ付与</small>
     </div>`;
+}
+
+function characterIconMarkdown(character) {
+  return `![${character.name}](${character.image} "${INLINE_CHARACTER_TITLE}")`;
 }
 
 function normalizeAnnotations(value) {
@@ -447,11 +452,13 @@ function enableLineAnnotations(
   editor,
   section,
   annotations,
-  { onChange, onAdded } = {},
+  { onChange, onAdded, onInlineAdded } = {},
 ) {
   editor.setOption("gutters", ["CodeMirror-linenumbers", ANNOTATION_GUTTER]);
   let decoratedLines = [];
   let dropLine = null;
+  let activeDragPayload = null;
+  let inlineCharacterMarks = [];
   let runtimeAnnotations = annotations.flatMap((annotation) => {
     const handle = editor.getLineHandle(annotation.line);
     return handle ? [{ annotation, handle }] : [];
@@ -586,7 +593,78 @@ function enableLineAnnotations(
     return true;
   };
 
-  editor.on("changes", renderMarkers);
+  const createInlineCharacterWidget = (character, getMark) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "trial-inline-character-icon";
+    button.title = `${character.name}（クリックで文中から削除）`;
+    button.setAttribute("aria-label", `${character.name}のアイコンを文中から削除`);
+    const image = document.createElement("img");
+    image.src = character.image;
+    image.alt = character.name;
+    button.append(image);
+    button.addEventListener("mousedown", (event) => event.stopPropagation());
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const range = getMark()?.find();
+      if (!range) return;
+      editor.replaceRange("", range.from, range.to, "+delete");
+      editor.focus();
+    });
+    return button;
+  };
+
+  const renderInlineCharacterIcons = () => {
+    inlineCharacterMarks.forEach((mark) => mark.clear());
+    inlineCharacterMarks = [];
+    editor.eachLine((lineHandle) => {
+      const line = editor.getLineNumber(lineHandle);
+      if (line === null) return;
+      CHARACTERS.forEach((character) => {
+        const markdown = characterIconMarkdown(character);
+        let from = 0;
+        while (from < lineHandle.text.length) {
+          const ch = lineHandle.text.indexOf(markdown, from);
+          if (ch < 0) break;
+          let mark;
+          const widget = createInlineCharacterWidget(character, () => mark);
+          mark = editor.markText(
+            { line, ch },
+            { line, ch: ch + markdown.length },
+            {
+              replacedWith: widget,
+              atomic: true,
+              clearOnEnter: false,
+              handleMouseEvents: true,
+            },
+          );
+          inlineCharacterMarks.push(mark);
+          from = ch + markdown.length;
+        }
+      });
+    });
+  };
+
+  const insertInlineCharacter = (payload, position) => {
+    if (payload.type !== "character") return false;
+    const character = CHARACTERS.find((item) => item.id === payload.refId);
+    if (!character) return false;
+    const markdown = characterIconMarkdown(character);
+    editor.replaceRange(markdown, position, position, "+input");
+    editor.setCursor({
+      line: position.line,
+      ch: position.ch + markdown.length,
+    });
+    editor.focus();
+    onInlineAdded?.(character);
+    return true;
+  };
+
+  editor.on("changes", () => {
+    renderMarkers();
+    renderInlineCharacterIcons();
+  });
   section.querySelectorAll("[data-drag-annotation-type]").forEach((button) => {
     let suppressClick = false;
     button.addEventListener("dragstart", (event) => {
@@ -594,15 +672,28 @@ function enableLineAnnotations(
         type: button.dataset.dragAnnotationType,
         refId: button.dataset.dragAnnotationId,
       };
+      activeDragPayload = payload;
       suppressClick = true;
       event.dataTransfer.effectAllowed = "copy";
       event.dataTransfer.setData(ANNOTATION_MIME, JSON.stringify(payload));
+      if (payload.type === "character") {
+        const character = CHARACTERS.find((item) => item.id === payload.refId);
+        if (character) {
+          event.dataTransfer.setData("text/plain", characterIconMarkdown(character));
+        }
+      }
       button.classList.add("is-dragging");
     });
     button.addEventListener("dragend", () => {
+      activeDragPayload = null;
       button.classList.remove("is-dragging");
       removeDropLine();
-      editor.getWrapperElement().classList.remove("is-annotation-dragover");
+      editor
+        .getWrapperElement()
+        .classList.remove(
+          "is-annotation-dragover",
+          "is-inline-character-dragover",
+        );
       requestAnimationFrame(() => {
         suppressClick = false;
       });
@@ -631,17 +722,26 @@ function enableLineAnnotations(
       "window",
     );
     const nextDropLine = editor.getLineHandle(position.line);
+    const isGutterDrop =
+      event.target instanceof Element &&
+      Boolean(event.target.closest(".CodeMirror-gutters"));
+    const isInlineDrop =
+      activeDragPayload?.type === "character" && !isGutterDrop;
     if (nextDropLine !== dropLine) {
       removeDropLine();
       dropLine = nextDropLine;
       editor.addLineClass(dropLine, "background", "trial-annotation-drop-line");
     }
     wrapper.classList.add("is-annotation-dragover");
+    wrapper.classList.toggle("is-inline-character-dragover", isInlineDrop);
   }, true);
   wrapper.addEventListener("dragleave", (event) => {
     if (wrapper.contains(event.relatedTarget)) return;
     removeDropLine();
-    wrapper.classList.remove("is-annotation-dragover");
+    wrapper.classList.remove(
+      "is-annotation-dragover",
+      "is-inline-character-dragover",
+    );
   }, true);
   wrapper.addEventListener("drop", (event) => {
     const encoded = event.dataTransfer.getData(ANNOTATION_MIME);
@@ -655,16 +755,27 @@ function enableLineAnnotations(
       return;
     }
     if (!isValidPayload(payload)) return;
-    const line = editor.coordsChar(
+    const position = editor.coordsChar(
       { left: event.clientX, top: event.clientY },
       "window",
-    ).line;
+    );
+    const isGutterDrop =
+      event.target instanceof Element &&
+      Boolean(event.target.closest(".CodeMirror-gutters"));
     removeDropLine();
-    wrapper.classList.remove("is-annotation-dragover");
-    addAnnotation(payload, line);
+    wrapper.classList.remove(
+      "is-annotation-dragover",
+      "is-inline-character-dragover",
+    );
+    if (payload.type === "character" && !isGutterDrop) {
+      insertInlineCharacter(payload, position);
+      return;
+    }
+    addAnnotation(payload, position.line);
   }, true);
 
   renderMarkers();
+  renderInlineCharacterIcons();
 }
 
 function defaultCase(title = "事件・捜査記録") {
@@ -1430,6 +1541,9 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
             : NOTE_BADGES.find((badge) => badge.id === annotation.refId)?.label;
         toast(`${label}を行に付けました`);
       },
+      onInlineAdded: (character) => {
+        toast(`${character.name}のアイコンを文中へ挿入しました`);
+      },
     });
     editor.on("change", () => {
       const wasFilled = Boolean(data.caseNote.trim());
@@ -1550,6 +1664,9 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
               ? findCharacter(annotation.refId).name
               : NOTE_BADGES.find((badge) => badge.id === annotation.refId)?.label;
           toast(`${label}を行に付けました`);
+        },
+        onInlineAdded: (character) => {
+          toast(`${character.name}のアイコンを文中へ挿入しました`);
         },
       });
 

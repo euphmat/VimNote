@@ -1511,6 +1511,19 @@ input:focus-visible,
   text-underline-offset: 3px;
 }
 
+.markdown-preview img[title="vimnote-character-icon"] {
+  display: inline-block;
+  width: 1.75em;
+  height: 1.75em;
+  margin: -0.35em 0.15em;
+  border: 2px solid color-mix(in srgb, var(--coral) 62%, var(--line));
+  border-radius: 50%;
+  background: var(--paper-deep);
+  box-shadow: 0 1px 4px rgba(31, 28, 24, 0.18);
+  object-fit: cover;
+  vertical-align: middle;
+}
+
 .markdown-preview hr {
   margin: 2em 0;
   border: 0;
@@ -3964,6 +3977,52 @@ input:focus-visible,
 
 .trial-character-vim-editor .CodeMirror.is-annotation-dragover {
   box-shadow: inset 0 0 0 2px var(--trial-accent);
+}
+
+.trial-character-vim-editor
+  .CodeMirror.is-annotation-dragover.is-inline-character-dragover {
+  box-shadow: inset 0 0 0 2px var(--trial-accent);
+  cursor: copy;
+}
+
+.trial-inline-character-icon {
+  display: inline-grid;
+  width: 25px;
+  height: 25px;
+  margin: -5px 3px;
+  padding: 1px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--trial-accent) 72%, var(--trial-border));
+  border-radius: 50%;
+  background: var(--trial-raised);
+  box-shadow:
+    0 0 0 2px var(--trial-panel),
+    0 1px 5px rgba(0, 0, 0, 0.38);
+  cursor: pointer;
+  vertical-align: middle;
+  transition:
+    border-color 120ms ease,
+    box-shadow 120ms ease,
+    transform 120ms ease;
+}
+
+.trial-inline-character-icon:hover,
+.trial-inline-character-icon:focus-visible {
+  z-index: 2;
+  outline: none;
+  border-color: var(--trial-accent);
+  box-shadow:
+    0 0 0 2px var(--trial-accent-soft),
+    0 2px 7px rgba(0, 0, 0, 0.42);
+  transform: scale(1.1);
+}
+
+.trial-inline-character-icon img {
+  width: 21px;
+  height: 21px;
+  border-radius: 50%;
+  object-fit: cover;
 }
 
 .trial-character-vim-editor .CodeMirror-cursor {
