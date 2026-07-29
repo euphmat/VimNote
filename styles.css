@@ -1337,36 +1337,31 @@ input:focus-visible,
 }
 
 .cm-header-1 {
-  font-size: 1.45em;
+  font-size: 1.35em;
   font-weight: 800;
-  letter-spacing: -0.035em;
-}
-
-.cm-header-2 {
-  font-size: 1.27em;
   letter-spacing: -0.025em;
 }
 
-.cm-header-3 {
-  font-size: 1.14em;
+.cm-header-2 {
+  font-size: 1.16em;
   letter-spacing: -0.015em;
+}
+
+.cm-header-3 {
+  letter-spacing: -0.01em;
 }
 
 .cm-header-4 {
   color: color-mix(in srgb, var(--syntax-heading) 88%, var(--ink)) !important;
-  font-size: 1.04em;
 }
 
 .cm-header-5 {
   color: color-mix(in srgb, var(--syntax-heading) 72%, var(--ink)) !important;
-  font-size: 0.96em;
   letter-spacing: 0.035em;
-  text-transform: uppercase;
 }
 
 .cm-header-6 {
   color: var(--muted) !important;
-  font-size: 0.92em;
   font-style: italic;
   letter-spacing: 0.04em;
 }
@@ -1377,55 +1372,61 @@ input:focus-visible,
 }
 
 .CodeMirror-linebackground[class*="cm-heading-line-"] {
-  border-radius: 4px;
+  border-radius: 7px;
 }
 
 .cm-heading-line-1 {
   background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--syntax-heading) 15%, transparent),
-    color-mix(in srgb, var(--syntax-heading) 4%, transparent) 68%,
-    transparent
+    105deg,
+    color-mix(in srgb, var(--syntax-heading) 17%, transparent) 0 18%,
+    color-mix(in srgb, var(--syntax-heading) 8%, transparent) 42%,
+    transparent 78%
   );
-  box-shadow: inset 3px 0 0 var(--syntax-heading);
 }
 
 .cm-heading-line-2 {
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--syntax-heading) 10%, transparent),
-    transparent 76%
+    color-mix(in srgb, var(--coral-soft) 62%, transparent),
+    color-mix(in srgb, var(--syntax-heading) 7%, transparent) 58%,
+    transparent 82%
   );
-  box-shadow: inset 2px 0 0
-    color-mix(in srgb, var(--syntax-heading) 78%, transparent);
 }
 
 .cm-heading-line-3 {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--syntax-heading) 7%, transparent),
-    transparent 58%
-  );
+  background: radial-gradient(
+      circle at 9px 50%,
+      color-mix(in srgb, var(--syntax-heading) 32%, transparent) 0 4px,
+      transparent 4.5px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--syntax-heading) 7%, transparent),
+      transparent 54%
+    );
 }
 
 .cm-heading-line-4 {
-  box-shadow: inset 1px 0 0
-    color-mix(in srgb, var(--syntax-heading) 58%, transparent);
+  background: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--syntax-link) 8%, transparent),
+    transparent 42%
+  );
 }
 
 .cm-heading-line-5 {
   background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--syntax-heading) 4%, transparent),
-    transparent 42%
+    105deg,
+    color-mix(in srgb, var(--syntax-quote) 8%, transparent),
+    transparent 36%
   );
 }
 
 .cm-heading-line-6 {
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--muted) 5%, transparent),
-    transparent 34%
+    color-mix(in srgb, var(--syntax-code) 7%, transparent),
+    transparent 30%
   );
 }
 
@@ -1505,76 +1506,94 @@ input:focus-visible,
 }
 
 .markdown-preview h1 {
+  isolation: isolate;
   margin-top: 1.8em;
-  padding: 0 0 0.48em;
-  font-size: clamp(1.85rem, 3.8vw, 2.35rem);
+  padding: 0.3em 0.55em 0.36em;
+  border-radius: 14px;
+  background: linear-gradient(
+    120deg,
+    color-mix(in srgb, var(--syntax-heading) 17%, transparent),
+    color-mix(in srgb, var(--coral-soft) 55%, transparent) 58%,
+    transparent
+  );
+  font-size: 2rem;
   font-weight: 800;
-  letter-spacing: -0.045em;
+  letter-spacing: -0.035em;
 }
 
 .markdown-preview h1::after {
   position: absolute;
-  right: 0;
-  bottom: 0;
-  left: 0;
-  height: 3px;
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    var(--syntax-heading) 0 22%,
-    color-mix(in srgb, var(--syntax-heading) 22%, var(--line)) 22% 100%
-  );
+  z-index: -1;
+  top: -0.22em;
+  right: 0.35em;
+  width: 1.25em;
+  height: 1.25em;
+  border-radius: 42% 58% 63% 37%;
+  background: color-mix(in srgb, var(--syntax-heading) 13%, transparent);
   content: "";
+  transform: rotate(18deg);
 }
 
 .markdown-preview h2 {
-  padding: 0.48em 0.72em;
-  border-left: 4px solid var(--syntax-heading);
-  border-radius: 0 8px 8px 0;
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--syntax-heading) 13%, transparent),
-    color-mix(in srgb, var(--syntax-heading) 3%, transparent) 72%,
-    transparent
-  );
-  font-size: clamp(1.42rem, 3vw, 1.7rem);
-  letter-spacing: -0.03em;
+  display: flex;
+  align-items: center;
+  gap: 0.48em;
+  padding: 0.3em 0.55em;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--syntax-heading) 9%, transparent);
+  font-size: 1.55rem;
+  letter-spacing: -0.025em;
+}
+
+.markdown-preview h2::before {
+  color: var(--syntax-heading);
+  content: "✦";
+  font-weight: 400;
+  line-height: 1;
 }
 
 .markdown-preview h3 {
   display: flex;
   align-items: center;
   gap: 0.58em;
-  font-size: 1.27rem;
-  letter-spacing: -0.02em;
+  font-size: 1.22rem;
+  letter-spacing: -0.015em;
 }
 
 .markdown-preview h3::before {
-  width: 0.52em;
-  height: 0.52em;
+  width: 0.58em;
+  height: 0.58em;
   flex: 0 0 auto;
-  border: 2px solid var(--syntax-heading);
-  border-radius: 2px;
-  background: color-mix(in srgb, var(--syntax-heading) 14%, transparent);
+  border-radius: 3px;
+  background: linear-gradient(135deg, var(--syntax-heading), var(--coral));
+  box-shadow: 0.3em 0.3em 0 color-mix(in srgb, var(--syntax-heading) 14%, transparent);
   content: "";
-  transform: rotate(45deg);
+  transform: rotate(12deg);
 }
 
 .markdown-preview h4 {
-  padding-left: 0.78em;
-  border-left: 2px solid color-mix(in srgb, var(--syntax-heading) 72%, var(--line));
-  font-size: 1.08rem;
+  display: flex;
+  align-items: center;
+  gap: 0.55em;
   letter-spacing: -0.01em;
+}
+
+.markdown-preview h4::before {
+  width: 1.15em;
+  height: 0.42em;
+  flex: 0 0 auto;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--syntax-link) 70%, var(--syntax-heading));
+  content: "";
 }
 
 .markdown-preview h5 {
   display: inline-block;
-  padding: 0 0.12em 0.28em;
-  border-bottom: 1px solid color-mix(in srgb, var(--syntax-heading) 62%, var(--line));
+  padding: 0.28em 0.72em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--syntax-quote) 14%, transparent);
   color: color-mix(in srgb, var(--ink) 86%, var(--syntax-heading));
-  font-size: 0.92rem;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .markdown-preview h6 {
@@ -1582,16 +1601,30 @@ input:focus-visible,
   align-items: center;
   gap: 0.55em;
   color: var(--muted);
-  font-size: 0.84rem;
   font-style: italic;
-  letter-spacing: 0.075em;
+  letter-spacing: 0.055em;
 }
 
 .markdown-preview h6::before {
-  width: 1.4em;
-  height: 1px;
+  width: 2em;
+  height: 0.58em;
   flex: 0 0 auto;
-  background: color-mix(in srgb, var(--syntax-heading) 65%, var(--line));
+  background:
+    radial-gradient(
+      circle at 0.29em 50%,
+      color-mix(in srgb, var(--syntax-code) 62%, var(--syntax-heading)) 0 0.28em,
+      transparent 0.3em
+    ),
+    radial-gradient(
+      circle at 1.02em 50%,
+      color-mix(in srgb, var(--syntax-code) 24%, transparent) 0 0.25em,
+      transparent 0.27em
+    ),
+    radial-gradient(
+      circle at 1.72em 50%,
+      color-mix(in srgb, var(--syntax-code) 11%, transparent) 0 0.22em,
+      transparent 0.24em
+    );
   content: "";
 }
 
