@@ -32,6 +32,13 @@ const CHARACTERS = Object.freeze([
   { id: "anan", name: "夏目アンアン", image: "./Assets/Character/夏目アンアン.JPG" },
 ]);
 
+const SPEAKER_GUTTER = "trial-speaker-gutter";
+const SPEAKER_MARKER_PATTERN = new RegExp(
+  `^(\\s*>\\s*\\*\\*)(${CHARACTERS.map((character) =>
+    character.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
+  ).join("|")})(\\*\\*\\s*[：:])`,
+);
+
 const CHARACTER_GROUPS = Object.freeze([
   { id: "prisoner", label: "囚人", icon: "lock-keyhole" },
   { id: "staff", label: "施設関係者", icon: "shield" },
@@ -186,6 +193,111 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function renderSpeakerToolbar() {
+  return `
+    <div class="trial-speaker-toolbar" aria-label="発言者をマーク">
+      <span class="trial-speaker-toolbar-label">
+        <i data-lucide="messages-square" aria-hidden="true"></i>
+        発言者
+      </span>
+      <div class="trial-speaker-list" role="group" aria-label="発言者を選択">
+        ${CHARACTERS.map(
+          (character) => `
+            <button
+              class="trial-speaker-button"
+              type="button"
+              data-insert-speaker="${character.id}"
+              aria-label="${escapeHtml(character.name)}の発言としてマーク"
+              title="${escapeHtml(character.name)}"
+            >
+              <img src="${escapeHtml(character.image)}" alt="" />
+            </button>`,
+        ).join("")}
+      </div>
+      <small>選ぶとカーソル行に名前とアイコンが付きます</small>
+    </div>`;
+}
+
+function findSpeakerInLine(line) {
+  const match = String(line ?? "").match(SPEAKER_MARKER_PATTERN);
+  if (!match) return null;
+  return CHARACTERS.find((character) => character.name === match[2]) || null;
+}
+
+function enableSpeakerMarkers(editor) {
+  editor.setOption("gutters", ["CodeMirror-linenumbers", SPEAKER_GUTTER]);
+  let decoratedLines = [];
+
+  const renderMarkers = () => {
+    decoratedLines.forEach((line) => {
+      editor.removeLineClass(line, "background", "trial-speaker-line");
+    });
+    decoratedLines = [];
+    editor.clearGutter(SPEAKER_GUTTER);
+
+    editor.eachLine((line) => {
+      const character = findSpeakerInLine(line.text);
+      if (!character) return;
+
+      const marker = document.createElement("span");
+      marker.className = "trial-speaker-gutter-marker";
+      marker.title = `${character.name}の発言`;
+      marker.setAttribute("aria-label", `${character.name}の発言`);
+
+      const image = document.createElement("img");
+      image.src = character.image;
+      image.alt = "";
+      marker.append(image);
+
+      editor.setGutterMarker(line, SPEAKER_GUTTER, marker);
+      editor.addLineClass(line, "background", "trial-speaker-line");
+      decoratedLines.push(line);
+    });
+  };
+
+  editor.on("changes", renderMarkers);
+  renderMarkers();
+}
+
+function insertSpeakerMarker(editor, character) {
+  const selectedText = editor.getSelection();
+  const marker = `> **${character.name}**：`;
+
+  if (selectedText) {
+    const lines = selectedText.split("\n");
+    const quotedSelection = lines
+      .map((line, index) => `${index === 0 ? marker : ">"}${line ? ` ${line}` : ""}`)
+      .join("\n");
+    editor.replaceSelection(quotedSelection, "around");
+    editor.focus();
+    return;
+  }
+
+  const cursor = editor.getCursor();
+  const line = editor.getLine(cursor.line);
+  const currentMarker = line.match(SPEAKER_MARKER_PATTERN);
+
+  if (currentMarker) {
+    editor.replaceRange(
+      marker,
+      { line: cursor.line, ch: currentMarker.index },
+      { line: cursor.line, ch: currentMarker[0].length },
+    );
+    const lengthDelta = marker.length - currentMarker[0].length;
+    editor.setCursor({
+      line: cursor.line,
+      ch: Math.max(marker.length, cursor.ch + lengthDelta),
+    });
+  } else {
+    editor.replaceRange(`${marker} `, { line: cursor.line, ch: 0 });
+    editor.setCursor({
+      line: cursor.line,
+      ch: cursor.ch + marker.length + 1,
+    });
+  }
+  editor.focus();
 }
 
 function defaultCase(title = "事件・捜査記録") {
@@ -894,6 +1006,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
               型を挿入
             </button>
           </div>
+          ${renderSpeakerToolbar()}
           <div class="trial-character-vim-editor trial-case-vim-editor">
             <textarea
               id="trial-case-note"
@@ -931,6 +1044,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       },
     });
     state.characterEditors.push(editor);
+    enableSpeakerMarkers(editor);
     editor.on("change", () => {
       const wasFilled = Boolean(data.caseNote.trim());
       data.caseNote = editor.getValue();
@@ -956,6 +1070,13 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         editor.replaceSelection(insertion, "end");
         editor.focus();
       });
+    section.querySelectorAll("[data-insert-speaker]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const character = findCharacter(button.dataset.insertSpeaker);
+        insertSpeakerMarker(editor, character);
+        toast(`${character.name}の発言としてマークしました`);
+      });
+    });
     editor.refresh();
   }
 
@@ -998,6 +1119,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                   </button>
                 </div>
               </div>
+              ${renderSpeakerToolbar()}
               <div class="trial-character-vim-editor">
                 <textarea
                   id="${editorId}"
@@ -1041,6 +1163,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         },
       });
       state.characterEditors.push(editor);
+      enableSpeakerMarkers(editor);
 
       editor.on("change", () => {
         const wasFilled = Boolean(file.note.trim());
@@ -1057,6 +1180,13 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       });
       editor.on("vim-mode-change", (nextMode) => {
         mode.textContent = (nextMode.mode || "normal").toUpperCase();
+      });
+      section.querySelectorAll("[data-insert-speaker]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const character = findCharacter(button.dataset.insertSpeaker);
+          insertSpeakerMarker(editor, character);
+          toast(`${character.name}の発言としてマークしました`);
+        });
       });
       editor.refresh();
     });
