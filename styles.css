@@ -3693,16 +3693,24 @@ input:focus-visible,
 }
 
 .trial-speaker-button {
-  width: 27px;
+  display: inline-flex;
+  width: auto;
+  min-width: 27px;
   height: 27px;
-  flex: 0 0 27px;
+  flex: none;
+  align-items: center;
+  gap: 4px;
   overflow: hidden;
-  padding: 0;
+  padding: 2px 7px 2px 2px;
   border: 1px solid var(--trial-border-strong);
-  border-radius: 50%;
+  border-radius: 999px;
   background: var(--trial-panel);
+  color: var(--trial-muted);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.22);
   cursor: grab;
+  font-size: 8px;
+  font-weight: 800;
+  white-space: nowrap;
   transition:
     border-color 120ms ease,
     box-shadow 120ms ease,
@@ -3733,8 +3741,10 @@ input:focus-visible,
 }
 
 .trial-speaker-button img {
-  width: 100%;
-  height: 100%;
+  width: 21px;
+  height: 21px;
+  flex: 0 0 21px;
+  border-radius: 50%;
   object-fit: cover;
 }
 
@@ -3873,24 +3883,27 @@ input:focus-visible,
 }
 
 .trial-character-vim-editor .trial-annotation-gutter {
-  width: 76px;
+  width: 116px;
 }
 
 .trial-line-annotation-group {
   display: flex;
   min-width: max-content;
   align-items: center;
+  gap: 3px;
   padding: 0 3px;
 }
 
 .trial-line-annotation {
   position: relative;
-  display: inline-grid;
-  width: 21px;
+  display: inline-flex;
+  width: auto;
+  min-width: 21px;
   height: 21px;
-  flex: 0 0 21px;
-  place-items: center;
-  padding: 0;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  padding: 0 6px;
   border: 1px solid currentColor;
   border-radius: 6px;
   background: var(--trial-raised);
@@ -3903,10 +3916,6 @@ input:focus-visible,
   line-height: 1;
 }
 
-.trial-line-annotation + .trial-line-annotation {
-  margin-left: -5px;
-}
-
 .trial-line-annotation:hover,
 .trial-line-annotation:focus-visible {
   z-index: 2;
@@ -3916,18 +3925,21 @@ input:focus-visible,
 }
 
 .trial-line-annotation.is-character {
-  width: 24px;
+  width: auto;
   height: 24px;
-  flex-basis: 24px;
+  gap: 4px;
+  padding: 1px 6px 1px 1px;
   overflow: hidden;
   border-color: color-mix(in srgb, var(--trial-accent) 70%, var(--trial-border));
-  border-radius: 50%;
+  border-radius: 999px;
   color: var(--trial-accent);
 }
 
 .trial-line-annotation img {
-  width: 100%;
-  height: 100%;
+  width: 20px;
+  height: 20px;
+  flex: 0 0 20px;
+  border-radius: 50%;
   object-fit: cover;
 }
 

@@ -5,31 +5,98 @@ import {
 } from "./vim-editor.js";
 
 const CHARACTERS = Object.freeze([
-  { id: "emma", name: "桜羽エマ", image: "./Assets/Character/桜羽エマ.JPG" },
-  { id: "meruru", name: "氷上メルル", image: "./Assets/Character/氷上メルル.JPG" },
-  { id: "nanoka", name: "黒部ナノカ", image: "./Assets/Character/黒部ナノカ.JPG" },
-  { id: "coco", name: "沢渡ココ", image: "./Assets/Character/沢渡ココ.JPG" },
-  { id: "reia", name: "蓮見レイア", image: "./Assets/Character/蓮見レイア.JPG" },
-  { id: "miria", name: "佐伯ミリア", image: "./Assets/Character/佐伯ミリア.JPG" },
-  { id: "hanna", name: "遠野ハンナ", image: "./Assets/Character/遠野ハンナ.JPG" },
+  {
+    id: "emma",
+    name: "桜羽エマ",
+    shortName: "エマ",
+    image: "./Assets/Character/桜羽エマ.JPG",
+  },
+  {
+    id: "meruru",
+    name: "氷上メルル",
+    shortName: "メルル",
+    image: "./Assets/Character/氷上メルル.JPG",
+  },
+  {
+    id: "nanoka",
+    name: "黒部ナノカ",
+    shortName: "ナノカ",
+    image: "./Assets/Character/黒部ナノカ.JPG",
+  },
+  {
+    id: "coco",
+    name: "沢渡ココ",
+    shortName: "ココ",
+    image: "./Assets/Character/沢渡ココ.JPG",
+  },
+  {
+    id: "reia",
+    name: "蓮見レイア",
+    shortName: "レイア",
+    image: "./Assets/Character/蓮見レイア.JPG",
+  },
+  {
+    id: "miria",
+    name: "佐伯ミリア",
+    shortName: "ミリア",
+    image: "./Assets/Character/佐伯ミリア.JPG",
+  },
+  {
+    id: "hanna",
+    name: "遠野ハンナ",
+    shortName: "ハンナ",
+    image: "./Assets/Character/遠野ハンナ.JPG",
+  },
   {
     id: "gokucho",
     name: "ゴクチョー",
+    shortName: "ゴクチョー",
     group: "staff",
     image: "./Assets/Character/ゴクチョー.JPG",
   },
-  { id: "sherry", name: "橘シェリー", image: "./Assets/Character/橘シェリー.JPG" },
-  { id: "alisa", name: "紫藤アリサ", image: "./Assets/Character/紫藤アリサ.JPG" },
+  {
+    id: "sherry",
+    name: "橘シェリー",
+    shortName: "シェリー",
+    image: "./Assets/Character/橘シェリー.JPG",
+  },
+  {
+    id: "alisa",
+    name: "紫藤アリサ",
+    shortName: "アリサ",
+    image: "./Assets/Character/紫藤アリサ.JPG",
+  },
   {
     id: "guard",
     name: "看守",
+    shortName: "看守",
     group: "staff",
     image: "./Assets/Character/看守.JPG",
   },
-  { id: "hiro", name: "二階堂ヒロ", image: "./Assets/Character/二階堂ヒロ.JPG" },
-  { id: "margo", name: "宝生マーゴ", image: "./Assets/Character/宝生マーゴ.JPG" },
-  { id: "noa", name: "城ヶ崎ノア", image: "./Assets/Character/城ヶ崎ノア.JPG" },
-  { id: "anan", name: "夏目アンアン", image: "./Assets/Character/夏目アンアン.JPG" },
+  {
+    id: "hiro",
+    name: "二階堂ヒロ",
+    shortName: "ヒロ",
+    image: "./Assets/Character/二階堂ヒロ.JPG",
+  },
+  {
+    id: "margo",
+    name: "宝生マーゴ",
+    shortName: "マーゴ",
+    image: "./Assets/Character/宝生マーゴ.JPG",
+  },
+  {
+    id: "noa",
+    name: "城ヶ崎ノア",
+    shortName: "ノア",
+    image: "./Assets/Character/城ヶ崎ノア.JPG",
+  },
+  {
+    id: "anan",
+    name: "夏目アンアン",
+    shortName: "アンアン",
+    image: "./Assets/Character/夏目アンアン.JPG",
+  },
 ]);
 
 const ANNOTATION_GUTTER = "trial-annotation-gutter";
@@ -41,41 +108,36 @@ const SPEAKER_MARKER_PATTERN = new RegExp(
 );
 
 const NOTE_BADGES = Object.freeze([
-  { id: "magic", label: "魔法", short: "魔", icon: "sparkles", tone: "violet" },
+  { id: "magic", label: "魔法", icon: "sparkles", tone: "violet" },
   {
     id: "testimony",
     label: "証言",
-    short: "証",
     icon: "messages-square",
     tone: "blue",
   },
-  { id: "action", label: "行動", short: "動", icon: "footprints", tone: "teal" },
+  { id: "action", label: "行動", icon: "footprints", tone: "teal" },
   {
     id: "evidence",
     label: "証拠",
-    short: "拠",
     icon: "fingerprint",
     tone: "amber",
   },
   {
     id: "alibi",
     label: "アリバイ",
-    short: "在",
     icon: "map-pinned",
     tone: "cyan",
   },
   {
     id: "contradiction",
     label: "矛盾",
-    short: "矛",
     icon: "git-compare-arrows",
     tone: "red",
   },
-  { id: "fact", label: "事実", short: "実", icon: "badge-check", tone: "green" },
+  { id: "fact", label: "事実", icon: "badge-check", tone: "green" },
   {
     id: "hypothesis",
     label: "推測",
-    short: "推",
     icon: "lightbulb",
     tone: "gray",
   },
@@ -266,10 +328,11 @@ function renderAnnotationToolbar(characterFiles = {}) {
                   draggable="true"
                   data-drag-annotation-type="character"
                   data-drag-annotation-id="${character.id}"
-                  aria-label="${escapeHtml(character.name)}を行へドラッグ"
-                  title="${escapeHtml(character.name)}を行へドラッグ"
+                  aria-label="${escapeHtml(character.name)}を現在行へ付与、または別の行へドラッグ"
+                  title="${escapeHtml(character.name)}を現在行へ付与、または別の行へドラッグ"
                 >
                   <img src="${escapeHtml(character.image)}" alt="" />
+                  <span>${escapeHtml(character.shortName)}</span>
                 </button>`,
             )
             .join("")}
@@ -306,8 +369,8 @@ function renderAnnotationToolbar(characterFiles = {}) {
                 draggable="true"
                 data-drag-annotation-type="badge"
                 data-drag-annotation-id="${badge.id}"
-                aria-label="${badge.label}を行へドラッグ"
-                title="${badge.label}を行へドラッグ"
+                aria-label="${badge.label}を現在行へ付与、または別の行へドラッグ"
+                title="${badge.label}を現在行へ付与、または別の行へドラッグ"
               >
                 <i data-lucide="${badge.icon}" aria-hidden="true"></i>
                 ${badge.label}
@@ -315,7 +378,7 @@ function renderAnnotationToolbar(characterFiles = {}) {
           ).join("")}
         </div>
       </div>
-      <small><i data-lucide="move" aria-hidden="true"></i>アイコンやバッジを本文の行へドラッグ</small>
+      <small><i data-lucide="mouse-pointer-click" aria-hidden="true"></i>クリックで現在行へ付与／ドラッグで別の行へ付与</small>
     </div>`;
 }
 
@@ -431,14 +494,16 @@ function enableLineAnnotations(
       const image = document.createElement("img");
       image.src = character.image;
       image.alt = "";
-      button.append(image);
+      const name = document.createElement("span");
+      name.textContent = character.shortName;
+      button.append(image, name);
     } else {
       const badge = NOTE_BADGES.find((item) => item.id === annotation.refId);
       if (!badge) return null;
       button.classList.add("is-badge", `is-${badge.tone}`);
       button.title = `${badge.label}（クリックで解除）`;
       button.setAttribute("aria-label", `${badge.label}バッジを行から解除`);
-      button.textContent = badge.short;
+      button.textContent = badge.label;
     }
 
     button.addEventListener("mousedown", (event) => event.stopPropagation());
@@ -486,13 +551,50 @@ function enableLineAnnotations(
     });
   };
 
+  const isValidPayload = (payload) =>
+    Boolean(payload) &&
+    ((payload.type === "character" &&
+      CHARACTERS.some((character) => character.id === payload.refId)) ||
+      (payload.type === "badge" &&
+        NOTE_BADGES.some((badge) => badge.id === payload.refId)));
+
+  const addAnnotation = (payload, line) => {
+    if (!isValidPayload(payload)) return false;
+    const handle = editor.getLineHandle(line);
+    if (
+      !handle ||
+      runtimeAnnotations.some(
+        (item) =>
+          item.handle === handle &&
+          item.annotation.type === payload.type &&
+          item.annotation.refId === payload.refId,
+      )
+    ) {
+      return false;
+    }
+    const annotation = {
+      id: crypto.randomUUID(),
+      type: payload.type,
+      refId: payload.refId,
+      line,
+    };
+    annotations.push(annotation);
+    runtimeAnnotations.push({ annotation, handle });
+    renderMarkers();
+    onChange?.();
+    onAdded?.(annotation);
+    return true;
+  };
+
   editor.on("changes", renderMarkers);
   section.querySelectorAll("[data-drag-annotation-type]").forEach((button) => {
+    let suppressClick = false;
     button.addEventListener("dragstart", (event) => {
       const payload = {
         type: button.dataset.dragAnnotationType,
         refId: button.dataset.dragAnnotationId,
       };
+      suppressClick = true;
       event.dataTransfer.effectAllowed = "copy";
       event.dataTransfer.setData(ANNOTATION_MIME, JSON.stringify(payload));
       button.classList.add("is-dragging");
@@ -501,6 +603,20 @@ function enableLineAnnotations(
       button.classList.remove("is-dragging");
       removeDropLine();
       editor.getWrapperElement().classList.remove("is-annotation-dragover");
+      requestAnimationFrame(() => {
+        suppressClick = false;
+      });
+    });
+    button.addEventListener("click", () => {
+      if (suppressClick) return;
+      addAnnotation(
+        {
+          type: button.dataset.dragAnnotationType,
+          refId: button.dataset.dragAnnotationId,
+        },
+        editor.getCursor().line,
+      );
+      editor.focus();
     });
   });
 
@@ -538,41 +654,14 @@ function enableLineAnnotations(
     } catch {
       return;
     }
-    const isValidPayload =
-      (payload.type === "character" &&
-        CHARACTERS.some((character) => character.id === payload.refId)) ||
-      (payload.type === "badge" &&
-        NOTE_BADGES.some((badge) => badge.id === payload.refId));
-    if (!isValidPayload) return;
+    if (!isValidPayload(payload)) return;
     const line = editor.coordsChar(
       { left: event.clientX, top: event.clientY },
       "window",
     ).line;
-    const handle = editor.getLineHandle(line);
     removeDropLine();
     wrapper.classList.remove("is-annotation-dragover");
-    if (
-      !handle ||
-      runtimeAnnotations.some(
-        (item) =>
-          item.handle === handle &&
-          item.annotation.type === payload.type &&
-          item.annotation.refId === payload.refId,
-      )
-    ) {
-      return;
-    }
-    const annotation = {
-      id: crypto.randomUUID(),
-      type: payload.type,
-      refId: payload.refId,
-      line,
-    };
-    annotations.push(annotation);
-    runtimeAnnotations.push({ annotation, handle });
-    renderMarkers();
-    onChange?.();
-    onAdded?.(annotation);
+    addAnnotation(payload, line);
   }, true);
 
   renderMarkers();
