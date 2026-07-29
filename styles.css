@@ -1372,62 +1372,87 @@ input:focus-visible,
 }
 
 .CodeMirror-linebackground[class*="cm-heading-line-"] {
-  border-radius: 7px;
+  border-radius: 9px;
 }
 
 .cm-heading-line-1 {
-  background: linear-gradient(
-    105deg,
-    color-mix(in srgb, var(--syntax-heading) 17%, transparent) 0 18%,
-    color-mix(in srgb, var(--syntax-heading) 8%, transparent) 42%,
-    transparent 78%
-  );
+  background:
+    radial-gradient(
+      circle at 18px 28%,
+      color-mix(in srgb, var(--syntax-link) 24%, transparent) 0 4px,
+      transparent 4.5px
+    ),
+    radial-gradient(
+      circle at 42px 76%,
+      color-mix(in srgb, var(--syntax-quote) 22%, transparent) 0 3px,
+      transparent 3.5px
+    ),
+    linear-gradient(
+      105deg,
+      color-mix(in srgb, var(--syntax-heading) 24%, transparent) 0 22%,
+      color-mix(in srgb, var(--coral-soft) 58%, transparent) 52%,
+      transparent 82%
+    );
 }
 
 .cm-heading-line-2 {
   background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--coral-soft) 62%, transparent),
-    color-mix(in srgb, var(--syntax-heading) 7%, transparent) 58%,
-    transparent 82%
+    105deg,
+    color-mix(in srgb, var(--syntax-link) 14%, transparent),
+    color-mix(in srgb, var(--syntax-heading) 17%, transparent) 34%,
+    color-mix(in srgb, var(--syntax-quote) 11%, transparent) 64%,
+    transparent 88%
   );
 }
 
 .cm-heading-line-3 {
   background: radial-gradient(
       circle at 9px 50%,
-      color-mix(in srgb, var(--syntax-heading) 32%, transparent) 0 4px,
+      color-mix(in srgb, var(--syntax-heading) 52%, transparent) 0 4px,
       transparent 4.5px
+    ),
+    radial-gradient(
+      circle at 22px 50%,
+      color-mix(in srgb, var(--syntax-link) 27%, transparent) 0 2.5px,
+      transparent 3px
     ),
     linear-gradient(
       90deg,
-      color-mix(in srgb, var(--syntax-heading) 7%, transparent),
-      transparent 54%
+      color-mix(in srgb, var(--syntax-heading) 11%, transparent),
+      transparent 58%
     );
 }
 
 .cm-heading-line-4 {
   background: linear-gradient(
     90deg,
-    color-mix(in srgb, var(--syntax-link) 8%, transparent),
-    transparent 42%
+    color-mix(in srgb, var(--syntax-link) 13%, transparent),
+    color-mix(in srgb, var(--syntax-link) 5%, transparent) 32%,
+    transparent 48%
   );
 }
 
 .cm-heading-line-5 {
   background: linear-gradient(
     105deg,
-    color-mix(in srgb, var(--syntax-quote) 8%, transparent),
-    transparent 36%
+    color-mix(in srgb, var(--syntax-quote) 15%, transparent),
+    color-mix(in srgb, var(--syntax-code) 7%, transparent) 30%,
+    transparent 44%
   );
 }
 
 .cm-heading-line-6 {
-  background: linear-gradient(
-    90deg,
-    color-mix(in srgb, var(--syntax-code) 7%, transparent),
-    transparent 30%
-  );
+  background:
+    radial-gradient(
+      circle at 8px 50%,
+      color-mix(in srgb, var(--syntax-code) 34%, transparent) 0 3px,
+      transparent 3.5px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(in srgb, var(--syntax-code) 10%, transparent),
+      transparent 36%
+    );
 }
 
 .cm-quote {
@@ -1508,14 +1533,18 @@ input:focus-visible,
 .markdown-preview h1 {
   isolation: isolate;
   margin-top: 1.8em;
-  padding: 0.3em 0.55em 0.36em;
-  border-radius: 14px;
+  padding: 0.34em 0.62em 0.4em;
+  overflow: hidden;
+  border-radius: 18px;
   background: linear-gradient(
-    120deg,
-    color-mix(in srgb, var(--syntax-heading) 17%, transparent),
-    color-mix(in srgb, var(--coral-soft) 55%, transparent) 58%,
-    transparent
+    118deg,
+    color-mix(in srgb, var(--syntax-heading) 26%, var(--surface)),
+    color-mix(in srgb, var(--coral-soft) 74%, var(--surface)) 48%,
+    color-mix(in srgb, var(--syntax-link) 15%, var(--surface))
   );
+  box-shadow:
+    0 9px 24px color-mix(in srgb, var(--syntax-heading) 12%, transparent),
+    6px 6px 0 color-mix(in srgb, var(--syntax-heading) 10%, transparent);
   font-size: 2rem;
   font-weight: 800;
   letter-spacing: -0.035em;
@@ -1524,29 +1553,59 @@ input:focus-visible,
 .markdown-preview h1::after {
   position: absolute;
   z-index: -1;
-  top: -0.22em;
-  right: 0.35em;
-  width: 1.25em;
-  height: 1.25em;
-  border-radius: 42% 58% 63% 37%;
-  background: color-mix(in srgb, var(--syntax-heading) 13%, transparent);
+  top: -0.4em;
+  right: -0.25em;
+  width: 3.6em;
+  height: 2.3em;
+  border-radius: 43% 57% 38% 62%;
+  background:
+    radial-gradient(
+      circle at 25% 34%,
+      color-mix(in srgb, var(--syntax-heading) 38%, transparent) 0 0.13em,
+      transparent 0.15em
+    ),
+    radial-gradient(
+      circle at 48% 58%,
+      color-mix(in srgb, var(--syntax-link) 31%, transparent) 0 0.1em,
+      transparent 0.12em
+    ),
+    radial-gradient(
+      circle at 70% 28%,
+      color-mix(in srgb, var(--syntax-quote) 34%, transparent) 0 0.11em,
+      transparent 0.13em
+    ),
+    color-mix(in srgb, var(--surface) 32%, transparent);
   content: "";
-  transform: rotate(18deg);
+  transform: rotate(-8deg);
 }
 
 .markdown-preview h2 {
   display: flex;
   align-items: center;
   gap: 0.48em;
-  padding: 0.3em 0.55em;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--syntax-heading) 9%, transparent);
+  padding: 0.34em 0.6em;
+  border-radius: 14px;
+  background: linear-gradient(
+    100deg,
+    color-mix(in srgb, var(--syntax-link) 14%, transparent),
+    color-mix(in srgb, var(--syntax-heading) 16%, transparent) 46%,
+    color-mix(in srgb, var(--syntax-quote) 10%, transparent)
+  );
+  box-shadow: 4px 4px 0 color-mix(in srgb, var(--syntax-link) 9%, transparent);
   font-size: 1.55rem;
   letter-spacing: -0.025em;
 }
 
 .markdown-preview h2::before {
-  color: var(--syntax-heading);
+  display: grid;
+  width: 1.45em;
+  height: 1.45em;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--syntax-heading), var(--coral));
+  box-shadow: 0.18em 0.18em 0 color-mix(in srgb, var(--syntax-link) 25%, transparent);
+  color: var(--surface);
   content: "✦";
   font-weight: 400;
   line-height: 1;
@@ -1556,6 +1615,15 @@ input:focus-visible,
   display: flex;
   align-items: center;
   gap: 0.58em;
+  padding: 0.22em 0.45em;
+  border-radius: 10px;
+  background:
+    radial-gradient(
+      circle at 96% 24%,
+      color-mix(in srgb, var(--syntax-quote) 19%, transparent) 0 0.24em,
+      transparent 0.26em
+    ),
+    color-mix(in srgb, var(--syntax-heading) 7%, transparent);
   font-size: 1.22rem;
   letter-spacing: -0.015em;
 }
@@ -1564,9 +1632,9 @@ input:focus-visible,
   width: 0.58em;
   height: 0.58em;
   flex: 0 0 auto;
-  border-radius: 3px;
+  border-radius: 4px;
   background: linear-gradient(135deg, var(--syntax-heading), var(--coral));
-  box-shadow: 0.3em 0.3em 0 color-mix(in srgb, var(--syntax-heading) 14%, transparent);
+  box-shadow: 0.3em 0.3em 0 color-mix(in srgb, var(--syntax-link) 22%, transparent);
   content: "";
   transform: rotate(12deg);
 }
@@ -1575,6 +1643,10 @@ input:focus-visible,
   display: flex;
   align-items: center;
   gap: 0.55em;
+  width: fit-content;
+  padding: 0.22em 0.7em 0.22em 0.42em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--syntax-link) 11%, transparent);
   letter-spacing: -0.01em;
 }
 
@@ -1583,7 +1655,8 @@ input:focus-visible,
   height: 0.42em;
   flex: 0 0 auto;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--syntax-link) 70%, var(--syntax-heading));
+  background: linear-gradient(90deg, var(--syntax-link), var(--syntax-heading));
+  box-shadow: 0 0.36em 0 color-mix(in srgb, var(--syntax-quote) 25%, transparent);
   content: "";
 }
 
@@ -1591,9 +1664,15 @@ input:focus-visible,
   display: inline-block;
   padding: 0.28em 0.72em;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--syntax-quote) 14%, transparent);
+  background: linear-gradient(
+    105deg,
+    color-mix(in srgb, var(--syntax-quote) 20%, transparent),
+    color-mix(in srgb, var(--syntax-code) 15%, transparent)
+  );
+  box-shadow: 3px 3px 0 color-mix(in srgb, var(--syntax-quote) 16%, transparent);
   color: color-mix(in srgb, var(--ink) 86%, var(--syntax-heading));
   letter-spacing: 0.06em;
+  transform: rotate(-0.6deg);
 }
 
 .markdown-preview h6 {
@@ -1626,6 +1705,12 @@ input:focus-visible,
       transparent 0.24em
     );
   content: "";
+}
+
+.markdown-preview h6::after {
+  color: color-mix(in srgb, var(--syntax-heading) 72%, var(--syntax-link));
+  content: "✦";
+  font-style: normal;
 }
 
 .markdown-preview p,
