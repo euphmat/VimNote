@@ -384,6 +384,10 @@ function renderAnnotationToolbar(characterFiles = {}) {
 }
 
 function characterIconMarkdown(character) {
+  return `![${character.shortName}](${character.image} "${INLINE_CHARACTER_TITLE}")`;
+}
+
+function legacyCharacterIconMarkdown(character) {
   return `![${character.name}](${character.image} "${INLINE_CHARACTER_TITLE}")`;
 }
 
@@ -601,8 +605,10 @@ function enableLineAnnotations(
     button.setAttribute("aria-label", `${character.name}のアイコンを文中から削除`);
     const image = document.createElement("img");
     image.src = character.image;
-    image.alt = character.name;
-    button.append(image);
+    image.alt = "";
+    const name = document.createElement("span");
+    name.textContent = character.shortName;
+    button.append(image, name);
     button.addEventListener("mousedown", (event) => event.stopPropagation());
     button.addEventListener("click", (event) => {
       event.preventDefault();
@@ -622,26 +628,31 @@ function enableLineAnnotations(
       const line = editor.getLineNumber(lineHandle);
       if (line === null) return;
       CHARACTERS.forEach((character) => {
-        const markdown = characterIconMarkdown(character);
-        let from = 0;
-        while (from < lineHandle.text.length) {
-          const ch = lineHandle.text.indexOf(markdown, from);
-          if (ch < 0) break;
-          let mark;
-          const widget = createInlineCharacterWidget(character, () => mark);
-          mark = editor.markText(
-            { line, ch },
-            { line, ch: ch + markdown.length },
-            {
-              replacedWith: widget,
-              atomic: true,
-              clearOnEnter: false,
-              handleMouseEvents: true,
-            },
-          );
-          inlineCharacterMarks.push(mark);
-          from = ch + markdown.length;
-        }
+        const markdownVariants = new Set([
+          characterIconMarkdown(character),
+          legacyCharacterIconMarkdown(character),
+        ]);
+        markdownVariants.forEach((markdown) => {
+          let from = 0;
+          while (from < lineHandle.text.length) {
+            const ch = lineHandle.text.indexOf(markdown, from);
+            if (ch < 0) break;
+            let mark;
+            const widget = createInlineCharacterWidget(character, () => mark);
+            mark = editor.markText(
+              { line, ch },
+              { line, ch: ch + markdown.length },
+              {
+                replacedWith: widget,
+                atomic: true,
+                clearOnEnter: false,
+                handleMouseEvents: true,
+              },
+            );
+            inlineCharacterMarks.push(mark);
+            from = ch + markdown.length;
+          }
+        });
       });
     });
   };

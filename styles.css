@@ -1371,7 +1371,7 @@ input:focus-visible,
   letter-spacing: 0.04em;
 }
 
-.cm-formatting-header {
+.cm-formatting.cm-formatting-header {
   color: color-mix(in srgb, var(--syntax-heading) 62%, var(--syntax-mark)) !important;
   font-weight: 700;
 }
@@ -1396,7 +1396,8 @@ input:focus-visible,
     color-mix(in srgb, var(--syntax-heading) 10%, transparent),
     transparent 76%
   );
-  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--syntax-heading) 78%, transparent);
+  box-shadow: inset 2px 0 0
+    color-mix(in srgb, var(--syntax-heading) 78%, transparent);
 }
 
 .cm-heading-line-3 {
@@ -1408,7 +1409,8 @@ input:focus-visible,
 }
 
 .cm-heading-line-4 {
-  box-shadow: inset 1px 0 0 color-mix(in srgb, var(--syntax-heading) 58%, transparent);
+  box-shadow: inset 1px 0 0
+    color-mix(in srgb, var(--syntax-heading) 58%, transparent);
 }
 
 .cm-heading-line-5 {
@@ -4155,21 +4157,29 @@ input:focus-visible,
 }
 
 .trial-inline-character-icon {
-  display: inline-grid;
-  width: 25px;
+  display: inline-flex;
+  width: auto;
+  min-width: 25px;
   height: 25px;
   margin: -5px 3px;
-  padding: 1px;
-  place-items: center;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 7px 1px 1px;
   overflow: hidden;
   border: 1px solid color-mix(in srgb, var(--trial-accent) 72%, var(--trial-border));
-  border-radius: 50%;
+  border-radius: 999px;
   background: var(--trial-raised);
+  color: var(--trial-ink);
   box-shadow:
     0 0 0 2px var(--trial-panel),
     0 1px 5px rgba(0, 0, 0, 0.38);
   cursor: pointer;
+  font-family: var(--font-sarasa);
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
   vertical-align: middle;
+  white-space: nowrap;
   transition:
     border-color 120ms ease,
     box-shadow 120ms ease,
@@ -4190,6 +4200,7 @@ input:focus-visible,
 .trial-inline-character-icon img {
   width: 21px;
   height: 21px;
+  flex: 0 0 21px;
   border-radius: 50%;
   object-fit: cover;
 }
