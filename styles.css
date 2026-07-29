@@ -2734,74 +2734,6 @@ input:focus-visible,
   background: rgba(18, 16, 21, 0.8);
 }
 
-.trial-case-switcher {
-  display: flex;
-  width: min(680px, 100%);
-  align-items: center;
-  gap: 7px;
-}
-
-.trial-case-switcher > label {
-  display: inline-flex;
-  flex: none;
-  align-items: center;
-  gap: 5px;
-  color: var(--trial-accent);
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: 0.08em;
-}
-
-.trial-case-switcher > label svg {
-  width: 12px;
-  height: 12px;
-}
-
-.trial-case-switcher select {
-  min-width: 0;
-  max-width: 260px;
-  height: 28px;
-  flex: 1;
-  padding: 0 28px 0 9px;
-  border: 1px solid var(--trial-border);
-  border-radius: 6px;
-  outline: none;
-  background: var(--trial-panel);
-  color: var(--trial-muted);
-  cursor: pointer;
-  font-size: 9px;
-  font-weight: 700;
-}
-
-.trial-case-switcher select:focus {
-  border-color: var(--trial-accent);
-}
-
-.trial-add-case-button {
-  display: inline-flex;
-  height: 28px;
-  flex: none;
-  align-items: center;
-  gap: 4px;
-  padding: 0 9px;
-  border: 1px solid color-mix(in srgb, var(--trial-accent) 54%, var(--trial-border));
-  border-radius: 6px;
-  background: var(--trial-accent-soft);
-  color: #e9b7cd;
-  cursor: pointer;
-  font-size: 8px;
-  font-weight: 800;
-}
-
-.trial-add-case-button:hover {
-  background: color-mix(in srgb, var(--trial-accent) 22%, transparent);
-}
-
-.trial-add-case-button svg {
-  width: 12px;
-  height: 12px;
-}
-
 .trial-case-title {
   display: block;
   width: min(560px, 100%);
@@ -3457,38 +3389,6 @@ input:focus-visible,
   padding: 18px 14px 42px;
 }
 
-.trial-dossier-grid.is-split .trial-dossier-hero {
-  align-items: start;
-  gap: 10px;
-  padding: 14px;
-  grid-template-columns: minmax(0, 1fr);
-}
-
-.trial-dossier-grid.is-split .trial-dossier-hero::before {
-  right: 14px;
-  left: 14px;
-}
-
-.trial-dossier-grid.is-split .trial-dossier-heading {
-  align-self: start;
-}
-
-.trial-dossier-grid.is-split .trial-dossier-heading h2 {
-  margin-top: 4px;
-  font-size: clamp(17px, 1.6vw, 22px);
-}
-
-.trial-dossier-grid.is-split .trial-dossier-summary {
-  display: none;
-}
-
-.trial-dossier-grid.is-split .trial-dossier-status {
-  align-self: start;
-  justify-self: start;
-  grid-column: 1;
-  flex-wrap: wrap;
-}
-
 .trial-dossier-grid.is-split .trial-death-check {
   min-height: 27px;
   padding: 4px 8px;
@@ -3530,96 +3430,11 @@ input:focus-visible,
   box-shadow: 0 18px 46px rgba(0, 0, 0, 0.12);
 }
 
-.trial-dossier-hero {
-  position: relative;
-  display: grid;
-  min-width: 0;
-  align-items: center;
-  gap: 20px;
-  padding: 20px 22px;
-  border-bottom: 1px solid var(--trial-border);
-  background:
-    radial-gradient(
-      circle at 12% 20%,
-      color-mix(in srgb, var(--trial-accent) 12%, transparent),
-      transparent 34%
-    ),
-    linear-gradient(135deg, var(--trial-raised), var(--trial-panel) 68%);
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
-.trial-dossier-hero::before {
-  position: absolute;
-  top: 0;
-  right: 22px;
-  left: 22px;
-  height: 1px;
-  background: linear-gradient(90deg, var(--trial-accent), transparent 72%);
-  content: "";
-  opacity: 0.7;
-}
-
 .trial-dossier-body {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  padding: 20px 22px 23px;
-}
-
-.trial-dossier-heading {
-  display: flex;
-  min-width: 0;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 18px;
-}
-
-.trial-dossier-identity {
-  min-width: 0;
-}
-
-.trial-dossier-heading h2 {
-  margin-top: 7px;
-  font-size: clamp(22px, 2.3vw, 28px);
-  font-weight: 800;
-  letter-spacing: 0.015em;
-  line-height: 1.2;
-}
-
-.trial-dossier-summary {
-  max-width: 520px;
-  margin-top: 9px;
-  color: var(--trial-muted);
-  font-size: 9px;
-  line-height: 1.7;
-}
-
-.trial-dossier-progress {
-  display: grid;
-  flex: none;
-  justify-items: end;
-  gap: 2px;
-  padding-left: 15px;
-  border-left: 1px solid var(--trial-border);
-}
-
-.trial-dossier-progress strong {
-  color: #e8b6ce;
-  font-size: 17px;
-  line-height: 1;
-}
-
-.trial-dossier-progress span {
-  color: var(--trial-subtle);
-  font-size: 7px;
-  font-weight: 700;
-}
-
-.trial-dossier-status {
-  display: flex;
-  flex: none;
-  align-items: center;
-  gap: 7px;
+  padding: 14px;
 }
 
 .trial-death-check {
@@ -3726,21 +3541,21 @@ input:focus-visible,
   background: var(--trial-raised);
 }
 
-.trial-character-editor-heading label {
+.trial-character-editor-heading > label {
   display: flex;
   min-width: 0;
   align-items: center;
   gap: 8px;
 }
 
-.trial-character-editor-heading label > svg {
+.trial-character-editor-heading > label > svg {
   width: 15px;
   height: 15px;
   flex: none;
   color: var(--trial-accent);
 }
 
-.trial-character-editor-heading label > span {
+.trial-character-editor-heading > label > span {
   display: grid;
   gap: 3px;
 }
@@ -3756,8 +3571,15 @@ input:focus-visible,
   font-weight: 600;
 }
 
+.trial-character-editor-actions {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+}
+
 .trial-character-vim-editor {
-  height: clamp(320px, 52vh, 620px);
+  height: clamp(400px, 68vh, 780px);
   background: var(--trial-panel);
 }
 
@@ -4517,17 +4339,6 @@ input:focus-visible,
     padding-left: 18px;
   }
 
-  .trial-dossier-hero {
-    gap: 16px;
-    padding: 18px;
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .trial-dossier-hero::before {
-    right: 18px;
-    left: 18px;
-  }
-
   .trial-reference-grid {
     grid-template-columns: 1fr;
   }
@@ -4784,28 +4595,6 @@ input:focus-visible,
     display: none;
   }
 
-  .trial-case-switcher {
-    gap: 5px;
-  }
-
-  .trial-case-switcher > label {
-    display: none;
-  }
-
-  .trial-case-switcher select {
-    max-width: none;
-  }
-
-  .trial-add-case-button {
-    width: 28px;
-    justify-content: center;
-    padding: 0;
-  }
-
-  .trial-add-case-button span {
-    display: none;
-  }
-
   .trial-case-title {
     margin-top: 5px;
     font-size: 17px;
@@ -4855,46 +4644,8 @@ input:focus-visible,
     padding: 15px 12px 36px;
   }
 
-  .trial-dossier-hero {
-    align-items: center;
-    gap: 12px;
-    padding: 14px;
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .trial-dossier-hero::before {
-    right: 14px;
-    left: 14px;
-  }
-
   .trial-dossier-body {
     padding: 14px;
-  }
-
-  .trial-dossier-heading {
-    display: block;
-    align-self: center;
-  }
-
-  .trial-dossier-heading h2 {
-    margin-top: 4px;
-    font-size: 18px;
-  }
-
-  .trial-dossier-summary {
-    display: none;
-  }
-
-  .trial-dossier-progress {
-    display: none;
-  }
-
-  .trial-dossier-status {
-    min-height: 27px;
-    align-self: center;
-    justify-self: end;
-    grid-column: 2;
-    flex-wrap: wrap;
   }
 
   .trial-death-check {

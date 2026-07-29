@@ -417,8 +417,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     showDeceased: document.querySelector("#trial-show-deceased"),
     deceasedCount: document.querySelector("#trial-deceased-count"),
     caseTitle: document.querySelector("#trial-case-title"),
-    caseSelect: document.querySelector("#trial-case-select"),
-    newCaseButton: document.querySelector("#trial-new-case-button"),
     saveState: document.querySelector("#trial-save-state"),
     view: document.querySelector("#trial-view"),
     mapButton: document.querySelector("#trial-map-button"),
@@ -593,21 +591,9 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
 
   function render() {
     el.caseTitle.value = data.title;
-    renderCaseSwitcher();
     renderCharacterList();
     renderView();
     iconRefresh();
-  }
-
-  function renderCaseSwitcher() {
-    el.caseSelect.innerHTML = caseBook.cases
-      .map(
-        (item, index) => `
-          <option value="${escapeHtml(item.id)}"${item.id === data.id ? " selected" : ""}>
-            ${escapeHtml(item.title || `事件 ${index + 1}`)}
-          </option>`,
-      )
-      .join("");
   }
 
   function renderCharacterList() {
@@ -979,34 +965,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     const hasNote = Boolean(file.note.trim());
     return `
         <section class="trial-dossier">
-          <header class="trial-dossier-hero">
-            <div class="trial-dossier-heading">
-              <div class="trial-dossier-identity">
-                <p class="trial-kicker">CHARACTER DOSSIER</p>
-                <h2>${escapeHtml(character.name)}</h2>
-                <p class="trial-dossier-summary">
-                  魔法とトラウマ、アリバイ、証言の矛盾を照合して魔女候補を検証します。
-                </p>
-              </div>
-              <div class="trial-dossier-progress">
-                <strong>${hasNote ? "記録あり" : "未記録"}</strong>
-                <span>人物メモ</span>
-              </div>
-            </div>
-            <div class="trial-dossier-status">
-              <label class="trial-death-check">
-                <input
-                  type="checkbox"
-                  data-character-deceased="${character.id}"
-                  ${file.isDead ? "checked" : ""}
-                />
-                <span aria-hidden="true">
-                  <i data-lucide="check"></i>
-                </span>
-                <strong>死亡</strong>
-              </label>
-            </div>
-          </header>
           <div class="trial-dossier-body">
             <section class="trial-character-editor${hasNote ? " has-value" : ""}">
               <div class="trial-character-editor-heading">
@@ -1017,15 +975,28 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                     <small>Markdown / Vim キーバインド対応</small>
                   </span>
                 </label>
-                <button
-                  class="trial-template-button"
-                  type="button"
-                  data-insert-character-template="${character.id}"
-                  aria-label="${escapeHtml(character.name)}の記録テンプレートを挿入"
-                >
-                  <i data-lucide="list-plus" aria-hidden="true"></i>
-                  型を挿入
-                </button>
+                <div class="trial-character-editor-actions">
+                  <label class="trial-death-check">
+                    <input
+                      type="checkbox"
+                      data-character-deceased="${character.id}"
+                      ${file.isDead ? "checked" : ""}
+                    />
+                    <span aria-hidden="true">
+                      <i data-lucide="check"></i>
+                    </span>
+                    <strong>死亡</strong>
+                  </label>
+                  <button
+                    class="trial-template-button"
+                    type="button"
+                    data-insert-character-template="${character.id}"
+                    aria-label="${escapeHtml(character.name)}の記録テンプレートを挿入"
+                  >
+                    <i data-lucide="list-plus" aria-hidden="true"></i>
+                    型を挿入
+                  </button>
+                </div>
               </div>
               <div class="trial-character-vim-editor">
                 <textarea
@@ -1077,10 +1048,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         const isFilled = Boolean(file.note.trim());
         section.classList.toggle("has-value", isFilled);
         count.textContent = `${file.note.length.toLocaleString("ja-JP")} 文字`;
-        const progress = section
-          .closest(".trial-dossier")
-          ?.querySelector(".trial-dossier-progress strong");
-        if (progress) progress.textContent = isFilled ? "記録あり" : "未記録";
         schedulePersist();
         if (wasFilled !== isFilled) renderCharacterList();
       });
@@ -1465,36 +1432,8 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     state.showDeceased = el.showDeceased.checked;
     renderCharacterList();
   });
-  el.caseSelect.addEventListener("change", () => {
-    const selected = caseBook.cases.find(
-      (item) => item.id === el.caseSelect.value,
-    );
-    if (!selected) return;
-    persist();
-    data = selected;
-    caseBook.activeCaseId = data.id;
-    state.showDeceased = false;
-    persist();
-    render();
-    toast(`${data.title}を開きました`);
-  });
-  el.newCaseButton.addEventListener("click", () => {
-    persist();
-    const nextNumber = caseBook.cases.length + 1;
-    const newCase = defaultCase(`新しい事件 ${nextNumber}`);
-    caseBook.cases.push(newCase);
-    caseBook.activeCaseId = newCase.id;
-    data = newCase;
-    state.showDeceased = false;
-    persist();
-    render();
-    el.caseTitle.focus();
-    el.caseTitle.select();
-    toast("新しい事件ファイルを追加しました");
-  });
   el.caseTitle.addEventListener("input", () => {
     data.title = el.caseTitle.value.trimStart().slice(0, 60);
-    renderCaseSwitcher();
     schedulePersist();
   });
   el.caseTitle.addEventListener("blur", () => {
