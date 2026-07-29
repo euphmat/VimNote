@@ -662,7 +662,10 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           return `
             <button
               class="trial-character-row${
-                data.selectedCharacterId === character.id ? " is-active" : ""
+                data.activeView === "board" &&
+                data.selectedCharacterId === character.id
+                  ? " is-active"
+                  : ""
               }${
                 data.openCharacterIds.includes(character.id) ? " is-open" : ""
               }${file.isDead ? " is-deceased" : ""}"
@@ -670,7 +673,10 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
               data-character-id="${character.id}"
               aria-label="${escapeHtml(character.name)}。クリックでプレビュー、ダブルクリックでタブを固定"
               aria-current="${
-                data.selectedCharacterId === character.id ? "true" : "false"
+                data.activeView === "board" &&
+                data.selectedCharacterId === character.id
+                  ? "true"
+                  : "false"
               }"
             >
               <img src="${character.image}" alt="" />
