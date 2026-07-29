@@ -398,7 +398,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     showDeceased: false,
     saveTimer: null,
     tabActivationTimer: null,
-    textareaResizeObserver: null,
     characterEditors: [],
     rulesHtml: null,
     rulesPromise: null,
@@ -466,54 +465,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     setSaveState(false);
     clearTimeout(state.saveTimer);
     state.saveTimer = setTimeout(persist, 240);
-  }
-
-  function trackTextareaHeights() {
-    state.textareaResizeObserver?.disconnect();
-    state.textareaResizeObserver = null;
-
-    const textareas = [
-      ...el.root.querySelectorAll("[data-textarea-height-key]"),
-    ].filter(
-      (textarea) =>
-        textarea.offsetParent !== null || textarea.closest("dialog[open]"),
-    );
-    textareas.forEach((textarea) => {
-      const savedHeight =
-        data.textareaHeights[textarea.dataset.textareaHeightKey];
-      if (Number.isFinite(savedHeight)) {
-        textarea.style.height = `${savedHeight}px`;
-      }
-    });
-
-    if (typeof ResizeObserver !== "function") return;
-    const previousHeights = new WeakMap(
-      textareas.map((textarea) => [
-        textarea,
-        Math.round(textarea.getBoundingClientRect().height),
-      ]),
-    );
-    state.textareaResizeObserver = new ResizeObserver((entries) => {
-      entries.forEach((entry) => {
-        const textarea = entry.target;
-        const height = Math.round(textarea.getBoundingClientRect().height);
-        const previousHeight = previousHeights.get(textarea);
-        previousHeights.set(textarea, height);
-        if (
-          previousHeight === undefined ||
-          Math.abs(height - previousHeight) < 2
-        ) {
-          return;
-        }
-        const key = textarea.dataset.textareaHeightKey;
-        if (data.textareaHeights[key] === height) return;
-        data.textareaHeights[key] = height;
-        schedulePersist();
-      });
-    });
-    textareas.forEach((textarea) =>
-      state.textareaResizeObserver.observe(textarea),
-    );
   }
 
   function bringFloatingDialogToFront(dialog) {
@@ -674,7 +625,32 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     el.deceasedCount.textContent = String(deceasedCount);
     el.showDeceased.checked = state.showDeceased;
     el.showDeceased.disabled = deceasedCount === 0;
-    el.characterList.innerHTML = CHARACTER_GROUPS.map((group) => {
+    const caseHasDetails = Boolean(data.caseNote.trim());
+    const caseRecord = `
+      <section class="trial-case-list-entry" aria-label="事件記録">
+        <button
+          class="trial-character-row trial-case-row${
+            data.activeView === "case" ? " is-active" : ""
+          }"
+          type="button"
+          data-case-record
+          aria-label="事件記録を開く"
+          aria-current="${data.activeView === "case" ? "true" : "false"}"
+        >
+          <span class="trial-case-row-icon">
+            <i data-lucide="clipboard-list" aria-hidden="true"></i>
+          </span>
+          <span class="trial-character-row-copy">
+            <strong>事件記録</strong>
+            <small class="trial-detail-state${caseHasDetails ? " has-details" : ""}">
+              <i data-lucide="${caseHasDetails ? "file-check-2" : "file-pen-line"}" aria-hidden="true"></i>
+              ${caseHasDetails ? "記録あり" : "未記録"}
+            </small>
+          </span>
+          <i data-lucide="chevron-right" aria-hidden="true"></i>
+        </button>
+      </section>`;
+    const characterGroups = CHARACTER_GROUPS.map((group) => {
       const groupCharacters = visibleCharacters.filter(
         (character) => (character.group || "prisoner") === group.id,
       );
@@ -739,13 +715,21 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           ${rows}
         </section>`;
     }).join("");
-    if (!visibleCharacters.length) {
-      el.characterList.innerHTML = `
+    const noResults = !visibleCharacters.length
+      ? `
         <div class="trial-no-results">
           <i data-lucide="user-round-x" aria-hidden="true"></i>
           <p>該当する人物はいません</p>
-        </div>`;
-    }
+        </div>`
+      : "";
+    el.characterList.innerHTML = caseRecord + characterGroups + noResults;
+    el.characterList
+      .querySelector("[data-case-record]")
+      .addEventListener("click", () => {
+        data.activeView = "case";
+        persist();
+        render();
+      });
     el.characterList
       .querySelectorAll("[data-character-id]")
       .forEach((button) => {
@@ -873,23 +857,11 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     iconRefresh();
   }
 
-  function renderTabs() {
-    el.tabs.forEach((button) => {
-      const active = button.dataset.trialView === data.activeView;
-      button.classList.toggle("is-active", active);
-      button.setAttribute("aria-current", active ? "page" : "false");
-    });
-  }
-
   function renderView() {
     state.characterEditors.forEach((editor) => editor.toTextArea());
     state.characterEditors = [];
-    state.textareaResizeObserver?.disconnect();
-    state.textareaResizeObserver = null;
     el.view.classList.toggle("is-board", data.activeView === "board");
-    if (data.activeView === "reference") {
-      renderReference();
-    } else if (data.activeView === "case") {
+    if (data.activeView === "case") {
       renderCaseFile();
     } else {
       renderBoard();
@@ -897,158 +869,102 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     iconRefresh();
   }
 
-  function renderFieldCard({
-    field,
-    value,
-    id,
-    dataAttributes,
-    heightKey,
-    className = "",
-  }) {
-    const hasValue = Boolean(value.trim());
-    return `
-      <section class="trial-character-section${field.wide ? " is-wide" : ""}${hasValue ? " has-value" : ""}">
-        <div class="trial-field-heading">
-          <label class="trial-field-label" for="${id}">
-            <i data-lucide="${field.icon}" aria-hidden="true"></i>
-            <span class="trial-field-title">
-              <strong>${field.label}</strong>
-              <small>${field.hint}</small>
-            </span>
-          </label>
-          <button
-            class="trial-template-button"
-            type="button"
-            data-insert-template="${id}"
-            data-template="${escapeHtml(field.template)}"
-            aria-label="${field.label}の記録テンプレートを挿入"
-          >
-            <i data-lucide="list-plus" aria-hidden="true"></i>
-            型を挿入
-          </button>
-        </div>
-        <textarea
-          id="${id}"
-          class="trial-dossier-note ${className}"
-          ${dataAttributes}
-          data-textarea-height-key="${heightKey}"
-          maxlength="10000"
-          placeholder="${escapeHtml(field.placeholder)}"
-        >${escapeHtml(value)}</textarea>
-        <div class="trial-field-status">
-          <span class="${hasValue ? "is-complete" : ""}">
-            <i data-lucide="${hasValue ? "check-circle-2" : "circle-dashed"}" aria-hidden="true"></i>
-            ${hasValue ? "記録あり" : "未記録"}
-          </span>
-          <small data-character-count="${id}">${value.length.toLocaleString("ja-JP")} / 10,000</small>
-        </div>
-      </section>`;
-  }
-
-  function bindFieldEnhancements(scope) {
-    scope.querySelectorAll("[data-insert-template]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const textarea = scope.querySelector(
-          `#${CSS.escape(button.dataset.insertTemplate)}`,
-        );
-        if (!textarea) return;
-        const template = button.dataset.template;
-        const insertion = textarea.value.trim()
-          ? `\n\n${template}`
-          : template;
-        textarea.setRangeText(
-          insertion,
-          textarea.selectionStart,
-          textarea.selectionEnd,
-          "end",
-        );
-        textarea.dispatchEvent(new Event("input", { bubbles: true }));
-        textarea.focus();
-      });
-    });
-  }
-
-  function updateFieldCard(textarea) {
-    const card = textarea.closest(".trial-character-section");
-    const hasValue = Boolean(textarea.value.trim());
-    card?.classList.toggle("has-value", hasValue);
-    const status = card?.querySelector(".trial-field-status span");
-    if (status) {
-      status.classList.toggle("is-complete", hasValue);
-      status.innerHTML = `
-        <i data-lucide="${hasValue ? "check-circle-2" : "circle-dashed"}" aria-hidden="true"></i>
-        ${hasValue ? "記録あり" : "未記録"}`;
-    }
-    const count = card?.querySelector("[data-character-count]");
-    if (count) {
-      count.textContent = `${textarea.value.length.toLocaleString("ja-JP")} / 10,000`;
-    }
-    iconRefresh();
-  }
-
   function renderCaseFile() {
-    const completed = CASE_FIELDS.filter((field) =>
-      data.caseFile[field.key].trim(),
-    ).length;
+    const hasNote = Boolean(data.caseNote.trim());
     el.view.innerHTML = `
       <div class="trial-content-page trial-case-file">
         <div class="trial-page-heading trial-investigation-heading">
           <div>
             <p class="trial-kicker">CASE INVESTIGATION</p>
             <h2>事件記録</h2>
-            <p>現場の事実から裁判の争点まで、捜査の順に整理します。</p>
+            <p>事件に関する情報を Markdown で自由に記録します。</p>
           </div>
-          <div class="trial-progress" aria-label="事件記録 ${completed}/${CASE_FIELDS.length} 項目">
-            <span>${completed}/${CASE_FIELDS.length}</span>
-            <div><i style="width:${(completed / CASE_FIELDS.length) * 100}%"></i></div>
-            <small>記録済み</small>
+          <div class="trial-page-icon">
+            <i data-lucide="clipboard-list" aria-hidden="true"></i>
           </div>
         </div>
-        <div class="trial-flow-rail" aria-label="捜査の流れ">
-          <span class="is-active"><i>01</i>遺体発見</span>
-          <b aria-hidden="true"></b>
-          <span><i>02</i>現場検証</span>
-          <b aria-hidden="true"></b>
-          <span><i>03</i>証言照合</span>
-          <b aria-hidden="true"></b>
-          <span><i>04</i>魔女裁判</span>
-        </div>
-        <div class="trial-case-field-grid">
-          ${CASE_FIELDS.map((field) =>
-            renderFieldCard({
-              field,
-              value: data.caseFile[field.key],
-              id: `trial-case-${field.key}`,
-              dataAttributes: `data-case-field="${field.key}"`,
-              heightKey: `case:${field.key}`,
-              className: "trial-case-note",
-            }),
-          ).join("")}
+        <section class="trial-character-editor trial-case-editor${hasNote ? " has-value" : ""}">
+          <div class="trial-character-editor-heading">
+            <label for="trial-case-note">
+              <i data-lucide="file-pen-line" aria-hidden="true"></i>
+              <span>
+                <strong>事件記録</strong>
+                <small>Markdown / Vim キーバインド対応</small>
+              </span>
+            </label>
+            <button
+              class="trial-template-button"
+              type="button"
+              data-insert-case-template
+              aria-label="事件記録のテンプレートを挿入"
+            >
+              <i data-lucide="list-plus" aria-hidden="true"></i>
+              型を挿入
+            </button>
+          </div>
+          <div class="trial-character-vim-editor trial-case-vim-editor">
+            <textarea
+              id="trial-case-note"
+              data-case-note
+              aria-label="事件記録"
+              placeholder="${escapeHtml(CASE_NOTE_PLACEHOLDER)}"
+            >${escapeHtml(data.caseNote)}</textarea>
+          </div>
+          <div class="trial-character-editor-status">
+            <span>
+              <b data-case-vim-mode>NORMAL</b>
+              <i data-case-cursor>1:1</i>
+            </span>
+            <small data-case-note-count>${data.caseNote.length.toLocaleString("ja-JP")} 文字</small>
+          </div>
+        </section>
+        <div class="trial-dossier-foot trial-case-editor-foot">
+          <span><i data-lucide="keyboard" aria-hidden="true"></i><code>jj</code> でNORMAL、<code>:w</code> で保存</span>
+          <span><i data-lucide="save" aria-hidden="true"></i>入力内容は自動保存</span>
         </div>
       </div>`;
-    el.view.querySelectorAll("[data-case-field]").forEach((textarea) => {
-      textarea.addEventListener("input", () => {
-        data.caseFile[textarea.dataset.caseField] = textarea.value;
-        updateFieldCard(textarea);
-        const completed = CASE_FIELDS.filter((field) =>
-          data.caseFile[field.key].trim(),
-        ).length;
-        const progress = el.view.querySelector(".trial-progress");
-        if (progress) {
-          progress.setAttribute(
-            "aria-label",
-            `事件記録 ${completed}/${CASE_FIELDS.length} 項目`,
-          );
-          progress.querySelector(":scope > span").textContent =
-            `${completed}/${CASE_FIELDS.length}`;
-          progress.querySelector("i").style.width =
-            `${(completed / CASE_FIELDS.length) * 100}%`;
-        }
-        schedulePersist();
-      });
+    const textarea = el.view.querySelector("[data-case-note]");
+    const section = textarea.closest(".trial-character-editor");
+    const mode = section.querySelector("[data-case-vim-mode]");
+    const cursor = section.querySelector("[data-case-cursor]");
+    const count = section.querySelector("[data-case-note-count]");
+    const editor = createVimMarkdownEditor(textarea, {
+      onSave: () => {
+        persist();
+        toast("事件記録を保存しました");
+      },
+      onClearSearch: () => {
+        clearVimSearch(editor);
+        toast("検索ハイライトを解除しました");
+      },
     });
-    bindFieldEnhancements(el.view);
-    trackTextareaHeights();
+    state.characterEditors.push(editor);
+    editor.on("change", () => {
+      const wasFilled = Boolean(data.caseNote.trim());
+      data.caseNote = editor.getValue();
+      const isFilled = Boolean(data.caseNote.trim());
+      section.classList.toggle("has-value", isFilled);
+      count.textContent = `${data.caseNote.length.toLocaleString("ja-JP")} 文字`;
+      schedulePersist();
+      if (wasFilled !== isFilled) renderCharacterList();
+    });
+    editor.on("cursorActivity", () => {
+      const position = editor.getCursor();
+      cursor.textContent = `${position.line + 1}:${position.ch + 1}`;
+    });
+    editor.on("vim-mode-change", (nextMode) => {
+      mode.textContent = (nextMode.mode || "normal").toUpperCase();
+    });
+    el.view
+      .querySelector("[data-insert-case-template]")
+      .addEventListener("click", () => {
+        const insertion = editor.getValue().trim()
+          ? `\n\n${CASE_NOTE_TEMPLATE}`
+          : CASE_NOTE_TEMPLATE;
+        editor.replaceSelection(insertion, "end");
+        editor.focus();
+      });
+    editor.refresh();
   }
 
   function renderCharacterDossier(character, paneId) {
@@ -1058,10 +974,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     return `
         <section class="trial-dossier">
           <header class="trial-dossier-hero">
-            <div class="trial-dossier-image">
-              <img src="${character.image}" alt="${escapeHtml(character.name)}" />
-              <span>SUBJECT ${String(CHARACTERS.indexOf(character) + 1).padStart(2, "0")}</span>
-            </div>
             <div class="trial-dossier-heading">
               <div class="trial-dossier-identity">
                 <p class="trial-kicker">CHARACTER DOSSIER</p>
@@ -1492,54 +1404,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     loadRules();
   }
 
-  function renderReference() {
-    el.view.innerHTML = `
-      <div class="trial-content-page">
-        <div class="trial-page-heading">
-          <div>
-            <p class="trial-kicker">REFERENCE / REGULATIONS</p>
-            <h2>裁判資料</h2>
-            <p>推理中に確認したい用語と牢屋敷の規則です。</p>
-          </div>
-          <div class="trial-page-icon"><i data-lucide="book-open-text" aria-hidden="true"></i></div>
-        </div>
-        <div class="trial-reference-grid">
-          <section class="trial-reference-card">
-            <div class="trial-reference-title">
-              <i data-lucide="sparkles" aria-hidden="true"></i>
-              <div><p class="trial-kicker">TERMS</p><h3>重要用語</h3></div>
-            </div>
-            <dl>
-              <div><dt>魔女</dt><dd>国に災厄をもたらす不死の存在。魔女化につれ殺意や妄想に支配される。</dd></div>
-              <div><dt>魔女因子</dt><dd>魔女となる者が生まれつき持つ因子。強いストレスで活性化する。</dd></div>
-              <div><dt>なれはて</dt><dd>完全に魔女化した者が行き着く、人の形を失った存在。</dd></div>
-              <div><dt>処刑</dt><dd>耐え難い苦痛を与え、完全な魔女化を短時間で進行させる儀式。</dd></div>
-              <div><dt>大魔女</dt><dd>ゴクチョーによれば、見つけることで何かが起こる存在。</dd></div>
-            </dl>
-          </section>
-          <section class="trial-reference-card trial-reference-rules">
-            <div class="trial-reference-title">
-              <i data-lucide="scroll-text" aria-hidden="true"></i>
-              <div><p class="trial-kicker">FULL REGULATIONS</p><h3>牢屋敷の規則</h3></div>
-            </div>
-            <div class="trial-reference-rules-copy">
-              <p>
-                生活規則、見張りの巡回、自由時間、魔女裁判、時間割を
-                <code>規則.md</code> から読み込み、読みやすい全文表示で確認できます。
-              </p>
-              <button type="button" data-open-rules>
-                <i data-lucide="maximize-2" aria-hidden="true"></i>
-                規則をモーダルで開く
-              </button>
-            </div>
-          </section>
-        </div>
-      </div>`;
-    el.view
-      .querySelector("[data-open-rules]")
-      .addEventListener("click", openRulesDialog);
-  }
-
   function exportCase() {
     persist();
     const lines = [
@@ -1549,12 +1413,8 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       "",
       "## 事件記録",
       "",
-      ...CASE_FIELDS.flatMap((field) => [
-        `### ${field.label}`,
-        "",
-        data.caseFile[field.key] || "_記録なし_",
-        "",
-      ]),
+      data.caseNote || "_記録なし_",
+      "",
       "## 人物記録",
       "",
     ];
@@ -1637,14 +1497,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       el.caseTitle.value = data.title;
     }
     persist();
-  });
-  el.tabs.forEach((button) => {
-    button.addEventListener("click", () => {
-      data.activeView = button.dataset.trialView;
-      persist();
-      renderTabs();
-      renderView();
-    });
   });
   el.mapButton.addEventListener("click", openMapDialog);
   el.mapMobileButton.addEventListener("click", openMapDialog);

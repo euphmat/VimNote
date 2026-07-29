@@ -2547,6 +2547,28 @@ input:focus-visible,
   overscroll-behavior: contain;
 }
 
+.trial-case-list-entry {
+  margin-bottom: 9px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid var(--trial-border);
+}
+
+.trial-case-row-icon {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--trial-accent) 38%, var(--trial-border));
+  border-radius: 8px;
+  background: var(--trial-accent-soft);
+  color: var(--trial-accent);
+}
+
+.trial-case-row-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
 .trial-character-group + .trial-character-group {
   margin-top: 9px;
   padding-top: 9px;
@@ -3171,58 +3193,7 @@ input:focus-visible,
   margin-top: 3px;
 }
 
-.trial-tabs {
-  display: flex;
-  min-height: 45px;
-  flex: none;
-  align-items: stretch;
-  gap: 5px;
-  padding: 0 27px;
-  border-bottom: 1px solid var(--trial-border);
-  background: var(--trial-panel);
-}
-
-.trial-tabs button {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 13px;
-  border: 0;
-  background: transparent;
-  color: var(--trial-muted);
-  cursor: pointer;
-  font-size: 10px;
-  font-weight: 700;
-}
-
-.trial-tabs button::after {
-  position: absolute;
-  right: 8px;
-  bottom: -1px;
-  left: 8px;
-  height: 2px;
-  border-radius: 2px 2px 0 0;
-  background: var(--trial-accent);
-  content: "";
-  opacity: 0;
-}
-
-.trial-tabs button:hover,
-.trial-tabs button.is-active {
-  color: var(--trial-ink);
-}
-
-.trial-tabs button.is-active::after {
-  opacity: 1;
-}
-
-.trial-tabs svg {
-  width: 14px;
-  height: 14px;
-}
-
-.trial-tabs .trial-mobile-action {
+.trial-mobile-actions {
   display: none;
 }
 
@@ -3488,23 +3459,18 @@ input:focus-visible,
 
 .trial-dossier-grid.is-split .trial-dossier-hero {
   align-items: start;
-  gap: 8px 13px;
+  gap: 10px;
   padding: 14px;
-  grid-template-columns: 86px minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .trial-dossier-grid.is-split .trial-dossier-hero::before {
   right: 14px;
-  left: 113px;
-}
-
-.trial-dossier-grid.is-split .trial-dossier-image {
-  width: 86px;
-  grid-row: 1 / span 2;
+  left: 14px;
 }
 
 .trial-dossier-grid.is-split .trial-dossier-heading {
-  align-self: end;
+  align-self: start;
 }
 
 .trial-dossier-grid.is-split .trial-dossier-heading h2 {
@@ -3519,7 +3485,7 @@ input:focus-visible,
 .trial-dossier-grid.is-split .trial-dossier-status {
   align-self: start;
   justify-self: start;
-  grid-column: 2;
+  grid-column: 1;
   flex-wrap: wrap;
 }
 
@@ -3579,57 +3545,18 @@ input:focus-visible,
       transparent 34%
     ),
     linear-gradient(135deg, var(--trial-raised), var(--trial-panel) 68%);
-  grid-template-columns: 120px minmax(0, 1fr) auto;
+  grid-template-columns: minmax(0, 1fr) auto;
 }
 
 .trial-dossier-hero::before {
   position: absolute;
   top: 0;
   right: 22px;
-  left: 162px;
+  left: 22px;
   height: 1px;
   background: linear-gradient(90deg, var(--trial-accent), transparent 72%);
   content: "";
   opacity: 0.7;
-}
-
-.trial-dossier-image {
-  position: relative;
-  width: 120px;
-  aspect-ratio: 1;
-  overflow: hidden;
-  border: 1px solid var(--trial-border-strong);
-  border-radius: 10px;
-  background: var(--trial-raised);
-  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.22);
-}
-
-.trial-dossier-image::after {
-  position: absolute;
-  inset: 0;
-  background:
-    linear-gradient(transparent 56%, rgba(18, 16, 21, 0.88)),
-    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent 36%);
-  content: "";
-  pointer-events: none;
-}
-
-.trial-dossier-image img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.trial-dossier-image > span {
-  position: absolute;
-  z-index: 1;
-  right: 10px;
-  bottom: 9px;
-  left: 10px;
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 7px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
 }
 
 .trial-dossier-body {
@@ -3832,6 +3759,14 @@ input:focus-visible,
 .trial-character-vim-editor {
   height: clamp(320px, 52vh, 620px);
   background: var(--trial-panel);
+}
+
+.trial-case-vim-editor {
+  height: clamp(430px, 62vh, 760px);
+}
+
+.trial-case-editor-foot {
+  margin-top: 8px;
 }
 
 .trial-character-vim-editor > textarea {
@@ -4495,8 +4430,7 @@ input:focus-visible,
     padding-left: 20px;
   }
 
-  .trial-case-header,
-  .trial-tabs {
+  .trial-case-header {
     padding-right: 20px;
     padding-left: 20px;
   }
@@ -4586,16 +4520,12 @@ input:focus-visible,
   .trial-dossier-hero {
     gap: 16px;
     padding: 18px;
-    grid-template-columns: 104px minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .trial-dossier-hero::before {
     right: 18px;
-    left: 138px;
-  }
-
-  .trial-dossier-image {
-    width: 104px;
+    left: 18px;
   }
 
   .trial-reference-grid {
@@ -4800,6 +4730,16 @@ input:focus-visible,
     padding: 9px;
   }
 
+  .trial-case-list-entry {
+    flex: none;
+    margin-right: 6px;
+    margin-bottom: 0;
+    padding-right: 9px;
+    padding-bottom: 0;
+    border-right: 1px solid var(--trial-border);
+    border-bottom: 0;
+  }
+
   .trial-character-row {
     display: flex;
     width: 72px;
@@ -4813,6 +4753,12 @@ input:focus-visible,
   .trial-character-row > img {
     width: 52px;
     height: 52px;
+  }
+
+  .trial-case-row-icon {
+    width: 52px;
+    height: 52px;
+    flex: none;
   }
 
   .trial-character-row-copy strong {
@@ -4873,25 +4819,35 @@ input:focus-visible,
     display: none;
   }
 
-  .trial-tabs {
+  .trial-mobile-actions {
+    display: flex;
     min-height: 43px;
     overflow-x: auto;
-    padding: 0 7px;
-  }
-
-  .trial-tabs button {
     flex: none;
-    padding: 0 9px;
-    font-size: 9px;
+    align-items: stretch;
+    gap: 5px;
+    padding: 0 7px;
+    border-bottom: 1px solid var(--trial-border);
+    background: var(--trial-panel);
   }
 
-  .trial-tabs svg {
+  .trial-mobile-actions button {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    gap: 7px;
+    padding: 0 9px;
+    border: 0;
+    background: transparent;
+    color: var(--trial-muted);
+    cursor: pointer;
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .trial-mobile-actions svg {
     width: 12px;
     height: 12px;
-  }
-
-  .trial-tabs .trial-mobile-action {
-    display: inline-flex;
   }
 
   .trial-dashboard,
@@ -4900,20 +4856,15 @@ input:focus-visible,
   }
 
   .trial-dossier-hero {
-    align-items: start;
-    gap: 7px 12px;
+    align-items: center;
+    gap: 12px;
     padding: 14px;
-    grid-template-columns: 78px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) auto;
   }
 
   .trial-dossier-hero::before {
     right: 14px;
-    left: 104px;
-  }
-
-  .trial-dossier-image {
-    width: 78px;
-    grid-row: 1 / span 2;
+    left: 14px;
   }
 
   .trial-dossier-body {
@@ -4922,7 +4873,7 @@ input:focus-visible,
 
   .trial-dossier-heading {
     display: block;
-    align-self: end;
+    align-self: center;
   }
 
   .trial-dossier-heading h2 {
@@ -4940,8 +4891,8 @@ input:focus-visible,
 
   .trial-dossier-status {
     min-height: 27px;
-    align-self: start;
-    justify-self: start;
+    align-self: center;
+    justify-self: end;
     grid-column: 2;
     flex-wrap: wrap;
   }
