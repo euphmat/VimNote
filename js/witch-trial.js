@@ -217,6 +217,54 @@ const CASE_NOTE_TEMPLATE = CASE_FIELDS.map(
   (field) => `## ${field.label}\n\n${field.template}`,
 ).join("\n\n");
 
+const TIMELINE_NOTE_PLACEHOLDER =
+  "# 時系列メモ\n\n事件前から遺体発見後まで、判明した出来事を時刻順に記録";
+
+const TIMELINE_NOTE_TEMPLATE = [
+  "## 事件前",
+  "",
+  "- [時刻] 人物｜場所｜出来事",
+  "",
+  "## 事件当日",
+  "",
+  "- [時刻] 人物｜場所｜出来事",
+  "",
+  "## 遺体発見後",
+  "",
+  "- [時刻] 人物｜場所｜出来事",
+  "",
+  "## 未確定の時間帯",
+  "",
+  "- [時刻／時間帯] 確認したいこと",
+].join("\n");
+
+const RECORD_TABS = Object.freeze([
+  {
+    id: "case",
+    label: "事件記録",
+    kicker: "CASE INVESTIGATION",
+    description: "事件に関する情報を Markdown で自由に記録します。",
+    icon: "clipboard-list",
+    editorIcon: "file-pen-line",
+    noteKey: "caseNote",
+    annotationsKey: "caseAnnotations",
+    placeholder: CASE_NOTE_PLACEHOLDER,
+    template: CASE_NOTE_TEMPLATE,
+  },
+  {
+    id: "timeline",
+    label: "時系列メモ",
+    kicker: "CASE TIMELINE",
+    description: "判明した行動や証言を、事件の流れに沿って時刻順に整理します。",
+    icon: "clock-3",
+    editorIcon: "list-ordered",
+    noteKey: "timelineNote",
+    annotationsKey: "timelineAnnotations",
+    placeholder: TIMELINE_NOTE_PLACEHOLDER,
+    template: TIMELINE_NOTE_TEMPLATE,
+  },
+]);
+
 const CHARACTER_FIELDS = Object.freeze([
   {
     key: "basicInfo",
@@ -285,7 +333,7 @@ const LEGACY_SUSPICION_LABELS = Object.freeze({
 });
 
 const CHARACTER_NOTE_PLACEHOLDER =
-  "# 人物メモ\n\n人物・関係、魔法・トラウマ、証言・時系列、アリバイ、矛盾、確定した事実を自由に記録";
+  "# 事件メモ\n\n人物・関係、魔法・トラウマ、証言・時系列、アリバイ、矛盾、確定した事実を自由に記録";
 
 const CHARACTER_NOTE_TEMPLATE = CHARACTER_FIELDS.map(
   (field) => `## ${field.label}\n\n${field.template}`,
@@ -803,6 +851,8 @@ function defaultCase(title = "事件・捜査記録") {
     textareaHeights: {},
     caseNote: "",
     caseAnnotations: [],
+    timelineNote: "",
+    timelineAnnotations: [],
     characterFiles: Object.fromEntries(
       CHARACTERS.map((character) => [
         character.id,
@@ -906,6 +956,10 @@ function normalizeCase(saved, fallback = defaultCase()) {
     caseNote,
     saved.caseAnnotations,
   );
+  const migratedTimelineNote = migrateLegacySpeakerMarkers(
+    typeof saved.timelineNote === "string" ? saved.timelineNote : "",
+    saved.timelineAnnotations,
+  );
   return {
     id:
       typeof saved.id === "string" && saved.id
@@ -917,7 +971,7 @@ function normalizeCase(saved, fallback = defaultCase()) {
           ? "事件・捜査記録"
           : saved.title.slice(0, 60)
         : fallback.title,
-    activeView: ["case", "board"].includes(saved.activeView)
+    activeView: ["case", "timeline", "board"].includes(saved.activeView)
       ? saved.activeView
       : saved.activeView === "reference"
         ? "board"
@@ -943,6 +997,8 @@ function normalizeCase(saved, fallback = defaultCase()) {
     ),
     caseNote: migratedCaseNote.note,
     caseAnnotations: migratedCaseNote.annotations,
+    timelineNote: migratedTimelineNote.note,
+    timelineAnnotations: migratedTimelineNote.annotations,
     characterFiles,
     mapNotes: Object.fromEntries(
       MAPS.map((map) => [
@@ -1060,7 +1116,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       caseBook.activeCaseId = data.id;
       localStorage.setItem(
         STORAGE_KEYS.witchTrialCase,
-        JSON.stringify({ version: 8, ...caseBook }),
+        JSON.stringify({ version: 9, ...caseBook }),
       );
       setSaveState(true);
     } catch (error) {
@@ -1222,30 +1278,33 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
     el.deceasedCount.textContent = String(deceasedCount);
     el.showDeceased.checked = state.showDeceased;
     el.showDeceased.disabled = deceasedCount === 0;
-    const caseHasDetails = Boolean(data.caseNote.trim());
-    const caseRecord = `
-      <section class="trial-case-list-entry" aria-label="事件記録">
+    const recordRows = RECORD_TABS.map((record) => {
+      const hasDetails = Boolean(data[record.noteKey].trim());
+      const isActive = data.activeView === record.id;
+      return `
         <button
-          class="trial-character-row trial-case-row${
-            data.activeView === "case" ? " is-active" : ""
-          }"
+          class="trial-character-row trial-case-row${isActive ? " is-active" : ""}"
           type="button"
-          data-case-record
-          aria-label="事件記録を開く"
-          aria-current="${data.activeView === "case" ? "true" : "false"}"
+          data-record-id="${record.id}"
+          aria-label="${record.label}を開く"
+          aria-current="${isActive ? "true" : "false"}"
         >
           <span class="trial-case-row-icon">
-            <i data-lucide="clipboard-list" aria-hidden="true"></i>
+            <i data-lucide="${record.icon}" aria-hidden="true"></i>
           </span>
           <span class="trial-character-row-copy">
-            <strong>事件記録</strong>
-            <small class="trial-detail-state${caseHasDetails ? " has-details" : ""}">
-              <i data-lucide="${caseHasDetails ? "file-check-2" : "file-pen-line"}" aria-hidden="true"></i>
-              ${caseHasDetails ? "記録あり" : "未記録"}
+            <strong>${record.label}</strong>
+            <small class="trial-detail-state${hasDetails ? " has-details" : ""}">
+              <i data-lucide="${hasDetails ? "file-check-2" : "file-pen-line"}" aria-hidden="true"></i>
+              ${hasDetails ? "記録あり" : "未記録"}
             </small>
           </span>
           <i data-lucide="chevron-right" aria-hidden="true"></i>
-        </button>
+        </button>`;
+    }).join("");
+    const caseRecord = `
+      <section class="trial-case-list-entry" aria-label="事件ファイル">
+        ${recordRows}
       </section>`;
     const characterGroups = CHARACTER_GROUPS.map((group) => {
       const groupCharacters = visibleCharacters.filter(
@@ -1327,11 +1386,11 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       : "";
     el.characterList.innerHTML = caseRecord + characterGroups + noResults;
     el.characterList
-      .querySelector("[data-case-record]")
-      .addEventListener("click", () => {
-        data.activeView = "case";
-        persist();
-        render();
+      .querySelectorAll("[data-record-id]")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          openRecordTab(button.dataset.recordId);
+        });
       });
     el.characterList
       .querySelectorAll("[data-character-id]")
@@ -1354,6 +1413,143 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       state.tabActivationTimer = null;
       openCharacterTab(characterId);
     }, 180);
+  }
+
+  function openRecordTab(recordId) {
+    if (!RECORD_TABS.some((record) => record.id === recordId)) return;
+    clearTimeout(state.tabActivationTimer);
+    state.tabActivationTimer = null;
+    data.activeView = recordId;
+    persist();
+    render();
+  }
+
+  function renderRecordTabItems() {
+    return RECORD_TABS.map((record) => {
+      const isActive = data.activeView === record.id;
+      return `
+        <div class="trial-character-tab-wrap trial-record-tab-wrap${
+          isActive ? " is-active" : ""
+        }">
+          <button
+            class="trial-character-tab trial-record-tab"
+            type="button"
+            role="tab"
+            aria-selected="${isActive}"
+            tabindex="${isActive ? "0" : "-1"}"
+            data-record-tab="${record.id}"
+          >
+            <i data-lucide="${record.icon}" aria-hidden="true"></i>
+            <span>${record.label}</span>
+          </button>
+        </div>`;
+    }).join("");
+  }
+
+  function renderCharacterTabItems(splitCharacterIdSet = new Set()) {
+    const openCharacters = data.openCharacterIds.map(findCharacter);
+    return openCharacters
+      .map((character) => {
+        const isActive =
+          data.activeView === "board" &&
+          character.id === data.selectedCharacterId;
+        const isSplitPane = splitCharacterIdSet.has(character.id);
+        const isPreview = character.id === data.previewCharacterId;
+        return `
+          <div class="trial-character-tab-wrap${
+            isActive ? " is-active" : ""
+          }${isSplitPane ? " is-secondary" : ""}${
+            isPreview ? " is-preview" : ""
+          }">
+            <button
+              class="trial-character-tab"
+              type="button"
+              role="tab"
+              aria-selected="${isActive}"
+              tabindex="${isActive ? "0" : "-1"}"
+              data-character-tab="${character.id}"
+              aria-label="${escapeHtml(character.name)}${
+                isPreview ? "、プレビュー。ダブルクリックで固定" : ""
+              }"
+              ${isPreview ? 'data-tooltip="ダブルクリックでタブを固定"' : ""}
+            >
+              <img src="${character.image}" alt="" />
+              <span>${escapeHtml(character.name)}</span>
+              ${
+                isSplitPane
+                  ? '<i data-lucide="columns-2" aria-hidden="true"></i>'
+                  : ""
+              }
+            </button>
+            <button
+              class="trial-character-tab-close"
+              type="button"
+              data-close-character-tab="${character.id}"
+              aria-label="${escapeHtml(character.name)}のタブを閉じる"
+              ${openCharacters.length === 1 ? "disabled" : ""}
+            >
+              <i data-lucide="x" aria-hidden="true"></i>
+            </button>
+          </div>`;
+      })
+      .join("");
+  }
+
+  function activateUnifiedTab(tabId) {
+    if (RECORD_TABS.some((record) => record.id === tabId)) {
+      openRecordTab(tabId);
+    } else {
+      openCharacterTab(tabId);
+    }
+  }
+
+  function bindUnifiedTabs() {
+    const tabIds = [
+      ...RECORD_TABS.map((record) => record.id),
+      ...data.openCharacterIds,
+    ];
+    el.view.querySelectorAll("[data-record-tab]").forEach((button) => {
+      button.addEventListener("click", () => {
+        openRecordTab(button.dataset.recordTab);
+      });
+    });
+    el.view.querySelectorAll("[data-character-tab]").forEach((button) => {
+      button.addEventListener("click", (event) => {
+        if (event.detail > 1) return;
+        queueCharacterTabActivation(button.dataset.characterTab);
+      });
+      button.addEventListener("dblclick", (event) => {
+        event.preventDefault();
+        openCharacterTab(button.dataset.characterTab, { pinned: true });
+      });
+      button.addEventListener("auxclick", (event) => {
+        if (event.button !== 1) return;
+        event.preventDefault();
+        closeCharacterTab(button.dataset.characterTab);
+      });
+    });
+    el.view
+      .querySelectorAll("[data-record-tab], [data-character-tab]")
+      .forEach((button) => {
+        button.addEventListener("keydown", (event) => {
+          if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
+          event.preventDefault();
+          const tabId =
+            button.dataset.recordTab || button.dataset.characterTab;
+          const currentIndex = tabIds.indexOf(tabId);
+          const direction = event.key === "ArrowRight" ? 1 : -1;
+          const nextIndex =
+            (currentIndex + direction + tabIds.length) % tabIds.length;
+          activateUnifiedTab(tabIds[nextIndex]);
+        });
+      });
+    el.view
+      .querySelectorAll("[data-close-character-tab]")
+      .forEach((button) => {
+        button.addEventListener("click", () => {
+          closeCharacterTab(button.dataset.closeCharacterTab);
+        });
+      });
   }
 
   function selectCharacterTab(characterId) {
@@ -1463,79 +1659,97 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
   function renderView() {
     state.characterEditors.forEach((editor) => editor.toTextArea());
     state.characterEditors = [];
-    el.view.classList.toggle("is-board", data.activeView === "board");
-    if (data.activeView === "case") {
-      renderCaseFile();
-    } else {
+    el.view.classList.add("is-board");
+    if (data.activeView === "board") {
       renderBoard();
+    } else {
+      renderCaseFile(data.activeView);
     }
     iconRefresh();
   }
 
-  function renderCaseFile() {
-    const hasNote = Boolean(data.caseNote.trim());
+  function renderCaseFile(recordId) {
+    const record =
+      RECORD_TABS.find((item) => item.id === recordId) || RECORD_TABS[0];
+    const note = data[record.noteKey];
+    const hasNote = Boolean(note.trim());
     el.view.innerHTML = `
-      <div class="trial-content-page trial-case-file">
-        <div class="trial-page-heading trial-investigation-heading">
-          <div>
-            <p class="trial-kicker">CASE INVESTIGATION</p>
-            <h2>事件記録</h2>
-            <p>事件に関する情報を Markdown で自由に記録します。</p>
-          </div>
-          <div class="trial-page-icon">
-            <i data-lucide="clipboard-list" aria-hidden="true"></i>
+      <div class="trial-board-shell">
+        <div class="trial-character-tabs">
+          <div
+            class="trial-character-tab-list"
+            role="tablist"
+            aria-label="事件記録、時系列メモ、人物別事件メモ"
+          >
+            ${renderRecordTabItems()}
+            ${renderCharacterTabItems()}
           </div>
         </div>
-        <section class="trial-character-editor trial-case-editor${hasNote ? " has-value" : ""}">
-          <div class="trial-character-editor-heading">
-            <label for="trial-case-note">
-              <i data-lucide="file-pen-line" aria-hidden="true"></i>
-              <span>
-                <strong>事件記録</strong>
-                <small>Markdown / Vim キーバインド対応</small>
-              </span>
-            </label>
-            <button
-              class="trial-template-button"
-              type="button"
-              data-insert-case-template
-              aria-label="事件記録のテンプレートを挿入"
-            >
-              <i data-lucide="list-plus" aria-hidden="true"></i>
-              型を挿入
-            </button>
+        <div class="trial-dossier-pane">
+          <div class="trial-content-page trial-case-file">
+            <div class="trial-page-heading trial-investigation-heading">
+              <div>
+                <p class="trial-kicker">${record.kicker}</p>
+                <h2>${record.label}</h2>
+                <p>${record.description}</p>
+              </div>
+              <div class="trial-page-icon">
+                <i data-lucide="${record.icon}" aria-hidden="true"></i>
+              </div>
+            </div>
+            <section class="trial-character-editor trial-case-editor${hasNote ? " has-value" : ""}">
+              <div class="trial-character-editor-heading">
+                <label for="trial-${record.id}-note">
+                  <i data-lucide="${record.editorIcon}" aria-hidden="true"></i>
+                  <span>
+                    <strong>${record.label}</strong>
+                    <small>Markdown / Vim キーバインド対応</small>
+                  </span>
+                </label>
+                <button
+                  class="trial-template-button"
+                  type="button"
+                  data-insert-record-template="${record.id}"
+                  aria-label="${record.label}のテンプレートを挿入"
+                >
+                  <i data-lucide="list-plus" aria-hidden="true"></i>
+                  型を挿入
+                </button>
+              </div>
+              ${renderAnnotationToolbar(data.characterFiles)}
+              <div class="trial-character-vim-editor trial-case-vim-editor">
+                <textarea
+                  id="trial-${record.id}-note"
+                  data-record-note="${record.id}"
+                  aria-label="${record.label}"
+                  placeholder="${escapeHtml(record.placeholder)}"
+                >${escapeHtml(note)}</textarea>
+              </div>
+              <div class="trial-character-editor-status">
+                <span>
+                  <b data-record-vim-mode>NORMAL</b>
+                  <i data-record-cursor>1:1</i>
+                </span>
+                <small data-record-note-count>${note.length.toLocaleString("ja-JP")} 文字</small>
+              </div>
+            </section>
+            <div class="trial-dossier-foot trial-case-editor-foot">
+              <span><i data-lucide="keyboard" aria-hidden="true"></i><code>jj</code> でNORMAL、<code>:w</code> で保存</span>
+              <span><i data-lucide="save" aria-hidden="true"></i>入力内容は自動保存</span>
+            </div>
           </div>
-          ${renderAnnotationToolbar(data.characterFiles)}
-          <div class="trial-character-vim-editor trial-case-vim-editor">
-            <textarea
-              id="trial-case-note"
-              data-case-note
-              aria-label="事件記録"
-              placeholder="${escapeHtml(CASE_NOTE_PLACEHOLDER)}"
-            >${escapeHtml(data.caseNote)}</textarea>
-          </div>
-          <div class="trial-character-editor-status">
-            <span>
-              <b data-case-vim-mode>NORMAL</b>
-              <i data-case-cursor>1:1</i>
-            </span>
-            <small data-case-note-count>${data.caseNote.length.toLocaleString("ja-JP")} 文字</small>
-          </div>
-        </section>
-        <div class="trial-dossier-foot trial-case-editor-foot">
-          <span><i data-lucide="keyboard" aria-hidden="true"></i><code>jj</code> でNORMAL、<code>:w</code> で保存</span>
-          <span><i data-lucide="save" aria-hidden="true"></i>入力内容は自動保存</span>
         </div>
       </div>`;
-    const textarea = el.view.querySelector("[data-case-note]");
+    bindUnifiedTabs();
+    const textarea = el.view.querySelector("[data-record-note]");
     const section = textarea.closest(".trial-character-editor");
-    const mode = section.querySelector("[data-case-vim-mode]");
-    const cursor = section.querySelector("[data-case-cursor]");
-    const count = section.querySelector("[data-case-note-count]");
+    const mode = section.querySelector("[data-record-vim-mode]");
+    const cursor = section.querySelector("[data-record-cursor]");
+    const count = section.querySelector("[data-record-note-count]");
     const editor = createVimMarkdownEditor(textarea, {
       onSave: () => {
         persist();
-        toast("事件記録を保存しました");
+        toast(`${record.label}を保存しました`);
       },
       onClearSearch: () => {
         clearVimSearch(editor);
@@ -1543,7 +1757,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       },
     });
     state.characterEditors.push(editor);
-    enableLineAnnotations(editor, section, data.caseAnnotations, {
+    enableLineAnnotations(editor, section, data[record.annotationsKey], {
       onChange: schedulePersist,
       onAdded: (annotation) => {
         const label =
@@ -1557,11 +1771,11 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       },
     });
     editor.on("change", () => {
-      const wasFilled = Boolean(data.caseNote.trim());
-      data.caseNote = editor.getValue();
-      const isFilled = Boolean(data.caseNote.trim());
+      const wasFilled = Boolean(data[record.noteKey].trim());
+      data[record.noteKey] = editor.getValue();
+      const isFilled = Boolean(data[record.noteKey].trim());
       section.classList.toggle("has-value", isFilled);
-      count.textContent = `${data.caseNote.length.toLocaleString("ja-JP")} 文字`;
+      count.textContent = `${data[record.noteKey].length.toLocaleString("ja-JP")} 文字`;
       schedulePersist();
       if (wasFilled !== isFilled) renderCharacterList();
     });
@@ -1573,11 +1787,11 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       mode.textContent = (nextMode.mode || "normal").toUpperCase();
     });
     el.view
-      .querySelector("[data-insert-case-template]")
+      .querySelector("[data-insert-record-template]")
       .addEventListener("click", () => {
         const insertion = editor.getValue().trim()
-          ? `\n\n${CASE_NOTE_TEMPLATE}`
-          : CASE_NOTE_TEMPLATE;
+          ? `\n\n${record.template}`
+          : record.template;
         editor.replaceSelection(insertion, "end");
         editor.focus();
       });
@@ -1596,7 +1810,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                 <label for="${editorId}">
                   <i data-lucide="file-pen-line" aria-hidden="true"></i>
                   <span>
-                    <strong>人物メモ</strong>
+                    <strong>事件メモ</strong>
                     <small>Markdown / Vim キーバインド対応</small>
                   </span>
                 </label>
@@ -1628,7 +1842,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                 <textarea
                   id="${editorId}"
                   data-character-note="${character.id}"
-                  aria-label="${escapeHtml(character.name)}の人物メモ"
+                  aria-label="${escapeHtml(character.name)}の事件メモ"
                   placeholder="${escapeHtml(CHARACTER_NOTE_PLACEHOLDER)}"
                 >${escapeHtml(file.note)}</textarea>
               </div>
@@ -1659,7 +1873,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       const editor = createVimMarkdownEditor(textarea, {
         onSave: () => {
           persist();
-          toast(`${findCharacter(characterId).name}の人物メモを保存しました`);
+          toast(`${findCharacter(characterId).name}の事件メモを保存しました`);
         },
         onClearSearch: () => {
           clearVimSearch(editor);
@@ -1739,51 +1953,10 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           <div
             class="trial-character-tab-list"
             role="tablist"
-            aria-label="開いている人物ファイル"
+            aria-label="事件記録、時系列メモ、人物別事件メモ"
           >
-            ${openCharacters
-              .map((character) => {
-                const isActive = character.id === primaryCharacter.id;
-                const isSplitPane = splitCharacterIdSet.has(character.id);
-                const isPreview = character.id === data.previewCharacterId;
-                return `
-                  <div class="trial-character-tab-wrap${
-                    isActive ? " is-active" : ""
-                  }${isSplitPane ? " is-secondary" : ""}${
-                    isPreview ? " is-preview" : ""
-                  }">
-                    <button
-                      class="trial-character-tab"
-                      type="button"
-                      role="tab"
-                      aria-selected="${isActive}"
-                      tabindex="${isActive ? "0" : "-1"}"
-                      data-character-tab="${character.id}"
-                      aria-label="${escapeHtml(character.name)}${
-                        isPreview ? "、プレビュー。ダブルクリックで固定" : ""
-                      }"
-                      ${isPreview ? 'data-tooltip="ダブルクリックでタブを固定"' : ""}
-                    >
-                      <img src="${character.image}" alt="" />
-                      <span>${escapeHtml(character.name)}</span>
-                      ${
-                        isSplitPane
-                          ? '<i data-lucide="columns-2" aria-hidden="true"></i>'
-                          : ""
-                      }
-                    </button>
-                    <button
-                      class="trial-character-tab-close"
-                      type="button"
-                      data-close-character-tab="${character.id}"
-                      aria-label="${escapeHtml(character.name)}のタブを閉じる"
-                      ${openCharacters.length === 1 ? "disabled" : ""}
-                    >
-                      <i data-lucide="x" aria-hidden="true"></i>
-                    </button>
-                  </div>`;
-              })
-              .join("")}
+            ${renderRecordTabItems()}
+            ${renderCharacterTabItems(splitCharacterIdSet)}
           </div>
           <div class="trial-character-tab-actions">
             <button
@@ -1856,40 +2029,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         </div>
       </div>`;
 
-    el.view.querySelectorAll("[data-character-tab]").forEach((button) => {
-      button.addEventListener("click", (event) => {
-        if (event.detail > 1) return;
-        queueCharacterTabActivation(button.dataset.characterTab);
-      });
-      button.addEventListener("dblclick", (event) => {
-        event.preventDefault();
-        openCharacterTab(button.dataset.characterTab, { pinned: true });
-      });
-      button.addEventListener("auxclick", (event) => {
-        if (event.button !== 1) return;
-        event.preventDefault();
-        closeCharacterTab(button.dataset.characterTab);
-      });
-      button.addEventListener("keydown", (event) => {
-        if (!["ArrowLeft", "ArrowRight"].includes(event.key)) return;
-        event.preventDefault();
-        const currentIndex = data.openCharacterIds.indexOf(
-          button.dataset.characterTab,
-        );
-        const direction = event.key === "ArrowRight" ? 1 : -1;
-        const nextIndex =
-          (currentIndex + direction + data.openCharacterIds.length) %
-          data.openCharacterIds.length;
-        openCharacterTab(data.openCharacterIds[nextIndex]);
-      });
-    });
-    el.view
-      .querySelectorAll("[data-close-character-tab]")
-      .forEach((button) => {
-        button.addEventListener("click", () => {
-          closeCharacterTab(button.dataset.closeCharacterTab);
-        });
-      });
+    bindUnifiedTabs();
     el.view
       .querySelector("[data-add-character-split]")
       .addEventListener("click", addCharacterSplit);
@@ -2028,7 +2168,11 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       "",
       data.caseNote || "_記録なし_",
       "",
-      "## 人物記録",
+      "## 時系列メモ",
+      "",
+      data.timelineNote || "_記録なし_",
+      "",
+      "## 人物別事件メモ",
       "",
     ];
     CHARACTERS.forEach((character) => {
