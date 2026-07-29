@@ -32,12 +32,54 @@ const CHARACTERS = Object.freeze([
   { id: "anan", name: "夏目アンアン", image: "./Assets/Character/夏目アンアン.JPG" },
 ]);
 
-const SPEAKER_GUTTER = "trial-speaker-gutter";
+const ANNOTATION_GUTTER = "trial-annotation-gutter";
+const ANNOTATION_MIME = "application/x-vimnote-line-annotation";
 const SPEAKER_MARKER_PATTERN = new RegExp(
   `^(\\s*>\\s*\\*\\*)(${CHARACTERS.map((character) =>
     character.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"),
   ).join("|")})(\\*\\*\\s*[：:])`,
 );
+
+const NOTE_BADGES = Object.freeze([
+  { id: "magic", label: "魔法", short: "魔", icon: "sparkles", tone: "violet" },
+  {
+    id: "testimony",
+    label: "証言",
+    short: "証",
+    icon: "messages-square",
+    tone: "blue",
+  },
+  { id: "action", label: "行動", short: "動", icon: "footprints", tone: "teal" },
+  {
+    id: "evidence",
+    label: "証拠",
+    short: "拠",
+    icon: "fingerprint",
+    tone: "amber",
+  },
+  {
+    id: "alibi",
+    label: "アリバイ",
+    short: "在",
+    icon: "map-pinned",
+    tone: "cyan",
+  },
+  {
+    id: "contradiction",
+    label: "矛盾",
+    short: "矛",
+    icon: "git-compare-arrows",
+    tone: "red",
+  },
+  { id: "fact", label: "事実", short: "実", icon: "badge-check", tone: "green" },
+  {
+    id: "hypothesis",
+    label: "推測",
+    short: "推",
+    icon: "lightbulb",
+    tone: "gray",
+  },
+]);
 
 const CHARACTER_GROUPS = Object.freeze([
   { id: "prisoner", label: "囚人", icon: "lock-keyhole" },
@@ -195,109 +237,345 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function renderSpeakerToolbar() {
+function renderAnnotationToolbar(characterFiles = {}) {
+  const visibleCharacters = CHARACTERS.filter(
+    (character) => characterFiles[character.id]?.isDead !== true,
+  );
+  const characterGroups = CHARACTER_GROUPS.map((group) => {
+    const groupCharacters = visibleCharacters.filter(
+      (character) => (character.group || "prisoner") === group.id,
+    );
+    if (!groupCharacters.length) return "";
+    return `
+      <section
+        class="trial-speaker-group is-${group.id}"
+        aria-label="${escapeHtml(group.label)}"
+      >
+        <div class="trial-speaker-group-heading">
+          <i data-lucide="${group.icon}" aria-hidden="true"></i>
+          <span>${escapeHtml(group.label)}</span>
+          <small>${groupCharacters.length}</small>
+        </div>
+        <div class="trial-speaker-list">
+          ${groupCharacters
+            .map(
+              (character) => `
+                <button
+                  class="trial-speaker-button"
+                  type="button"
+                  draggable="true"
+                  data-drag-annotation-type="character"
+                  data-drag-annotation-id="${character.id}"
+                  aria-label="${escapeHtml(character.name)}を行へドラッグ"
+                  title="${escapeHtml(character.name)}を行へドラッグ"
+                >
+                  <img src="${escapeHtml(character.image)}" alt="" />
+                </button>`,
+            )
+            .join("")}
+        </div>
+      </section>`;
+  }).join("");
+
   return `
-    <div class="trial-speaker-toolbar" aria-label="発言者をマーク">
-      <span class="trial-speaker-toolbar-label">
-        <i data-lucide="messages-square" aria-hidden="true"></i>
-        発言者
-      </span>
-      <div class="trial-speaker-list" role="group" aria-label="発言者を選択">
-        ${CHARACTERS.map(
-          (character) => `
-            <button
-              class="trial-speaker-button"
-              type="button"
-              data-insert-speaker="${character.id}"
-              aria-label="${escapeHtml(character.name)}の発言としてマーク"
-              title="${escapeHtml(character.name)}"
-            >
-              <img src="${escapeHtml(character.image)}" alt="" />
-            </button>`,
-        ).join("")}
+    <div class="trial-annotation-toolbar" aria-label="行に付けるマーカー">
+      <div class="trial-annotation-row">
+        <span class="trial-annotation-toolbar-label">
+          <i data-lucide="users" aria-hidden="true"></i>
+          発言者
+        </span>
+        <div
+          class="trial-speaker-groups"
+          role="group"
+          aria-label="発言者を選択"
+        >
+          ${characterGroups}
+        </div>
       </div>
-      <small>選ぶとカーソル行に名前とアイコンが付きます</small>
+      <div class="trial-annotation-row trial-badge-row">
+        <span class="trial-annotation-toolbar-label">
+          <i data-lucide="tags" aria-hidden="true"></i>
+          属性
+        </span>
+        <div class="trial-badge-list" role="group" aria-label="属性バッジ">
+          ${NOTE_BADGES.map(
+            (badge) => `
+              <button
+                class="trial-badge-button is-${badge.tone}"
+                type="button"
+                draggable="true"
+                data-drag-annotation-type="badge"
+                data-drag-annotation-id="${badge.id}"
+                aria-label="${badge.label}を行へドラッグ"
+                title="${badge.label}を行へドラッグ"
+              >
+                <i data-lucide="${badge.icon}" aria-hidden="true"></i>
+                ${badge.label}
+              </button>`,
+          ).join("")}
+        </div>
+      </div>
+      <small><i data-lucide="move" aria-hidden="true"></i>アイコンやバッジを本文の行へドラッグ</small>
     </div>`;
 }
 
-function findSpeakerInLine(line) {
-  const match = String(line ?? "").match(SPEAKER_MARKER_PATTERN);
-  if (!match) return null;
-  return CHARACTERS.find((character) => character.name === match[2]) || null;
+function normalizeAnnotations(value) {
+  if (!Array.isArray(value)) return [];
+  const validCharacters = new Set(CHARACTERS.map((character) => character.id));
+  const validBadges = new Set(NOTE_BADGES.map((badge) => badge.id));
+  const seen = new Set();
+  return value.slice(0, 1000).flatMap((annotation) => {
+    if (!annotation || typeof annotation !== "object") return [];
+    const type = annotation.type;
+    const refId = annotation.refId;
+    const line = Number.isInteger(annotation.line) ? annotation.line : -1;
+    if (
+      line < 0 ||
+      line > 100000 ||
+      (type === "character" && !validCharacters.has(refId)) ||
+      (type === "badge" && !validBadges.has(refId))
+    ) {
+      return [];
+    }
+    const key = `${line}:${type}:${refId}`;
+    if (seen.has(key)) return [];
+    seen.add(key);
+    return [{
+      id:
+        typeof annotation.id === "string" && annotation.id
+          ? annotation.id
+          : crypto.randomUUID(),
+      type,
+      refId,
+      line,
+    }];
+  });
 }
 
-function enableSpeakerMarkers(editor) {
-  editor.setOption("gutters", ["CodeMirror-linenumbers", SPEAKER_GUTTER]);
+function migrateLegacySpeakerMarkers(note, savedAnnotations) {
+  const annotations = normalizeAnnotations(savedAnnotations);
+  const lines = String(note ?? "").split("\n");
+  lines.forEach((line, lineNumber) => {
+    const match = line.match(SPEAKER_MARKER_PATTERN);
+    if (!match) return;
+    const character = CHARACTERS.find((item) => item.name === match[2]);
+    if (
+      character &&
+      !annotations.some(
+        (item) =>
+          item.line === lineNumber &&
+          item.type === "character" &&
+          item.refId === character.id,
+      )
+    ) {
+      annotations.push({
+        id: crypto.randomUUID(),
+        type: "character",
+        refId: character.id,
+        line: lineNumber,
+      });
+    }
+    lines[lineNumber] = line.slice(match[0].length).replace(/^ /, "");
+  });
+  return { note: lines.join("\n"), annotations };
+}
+
+function enableLineAnnotations(
+  editor,
+  section,
+  annotations,
+  { onChange, onAdded } = {},
+) {
+  editor.setOption("gutters", ["CodeMirror-linenumbers", ANNOTATION_GUTTER]);
   let decoratedLines = [];
+  let dropLine = null;
+  let runtimeAnnotations = annotations.flatMap((annotation) => {
+    const handle = editor.getLineHandle(annotation.line);
+    return handle ? [{ annotation, handle }] : [];
+  });
+  const mountedAnnotations = new Set(
+    runtimeAnnotations.map((item) => item.annotation),
+  );
+  annotations.splice(
+    0,
+    annotations.length,
+    ...annotations.filter((annotation) => mountedAnnotations.has(annotation)),
+  );
 
-  const renderMarkers = () => {
-    decoratedLines.forEach((line) => {
-      editor.removeLineClass(line, "background", "trial-speaker-line");
-    });
-    decoratedLines = [];
-    editor.clearGutter(SPEAKER_GUTTER);
+  const removeDropLine = () => {
+    if (!dropLine) return;
+    editor.removeLineClass(dropLine, "background", "trial-annotation-drop-line");
+    dropLine = null;
+  };
 
-    editor.eachLine((line) => {
-      const character = findSpeakerInLine(line.text);
-      if (!character) return;
+  const removeAnnotation = (runtimeAnnotation) => {
+    const runtimeIndex = runtimeAnnotations.indexOf(runtimeAnnotation);
+    if (runtimeIndex >= 0) runtimeAnnotations.splice(runtimeIndex, 1);
+    const savedIndex = annotations.indexOf(runtimeAnnotation.annotation);
+    if (savedIndex >= 0) annotations.splice(savedIndex, 1);
+    renderMarkers();
+    onChange?.();
+  };
 
-      const marker = document.createElement("span");
-      marker.className = "trial-speaker-gutter-marker";
-      marker.title = `${character.name}の発言`;
-      marker.setAttribute("aria-label", `${character.name}の発言`);
+  const createMarkerItem = (runtimeAnnotation) => {
+    const { annotation } = runtimeAnnotation;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "trial-line-annotation";
 
+    if (annotation.type === "character") {
+      const character = findCharacter(annotation.refId);
+      button.classList.add("is-character");
+      button.title = `${character.name}（クリックで解除）`;
+      button.setAttribute("aria-label", `${character.name}を行から解除`);
       const image = document.createElement("img");
       image.src = character.image;
       image.alt = "";
-      marker.append(image);
+      button.append(image);
+    } else {
+      const badge = NOTE_BADGES.find((item) => item.id === annotation.refId);
+      if (!badge) return null;
+      button.classList.add("is-badge", `is-${badge.tone}`);
+      button.title = `${badge.label}（クリックで解除）`;
+      button.setAttribute("aria-label", `${badge.label}バッジを行から解除`);
+      button.textContent = badge.short;
+    }
 
-      editor.setGutterMarker(line, SPEAKER_GUTTER, marker);
-      editor.addLineClass(line, "background", "trial-speaker-line");
+    button.addEventListener("mousedown", (event) => event.stopPropagation());
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      removeAnnotation(runtimeAnnotation);
+    });
+    return button;
+  };
+
+  const renderMarkers = () => {
+    decoratedLines.forEach((line) => {
+      editor.removeLineClass(line, "background", "trial-annotated-line");
+    });
+    decoratedLines = [];
+    editor.clearGutter(ANNOTATION_GUTTER);
+
+    const grouped = new Map();
+    runtimeAnnotations = runtimeAnnotations.filter((runtimeAnnotation) => {
+      const lineNumber = editor.getLineNumber(runtimeAnnotation.handle);
+      if (lineNumber === null) {
+        const index = annotations.indexOf(runtimeAnnotation.annotation);
+        if (index >= 0) annotations.splice(index, 1);
+        return false;
+      }
+      runtimeAnnotation.annotation.line = lineNumber;
+      const group = grouped.get(runtimeAnnotation.handle) || [];
+      group.push(runtimeAnnotation);
+      grouped.set(runtimeAnnotation.handle, group);
+      return true;
+    });
+
+    grouped.forEach((items, line) => {
+      const marker = document.createElement("span");
+      marker.className = "trial-line-annotation-group";
+      items.forEach((item) => {
+        const markerItem = createMarkerItem(item);
+        if (markerItem) marker.append(markerItem);
+      });
+
+      editor.setGutterMarker(line, ANNOTATION_GUTTER, marker);
+      editor.addLineClass(line, "background", "trial-annotated-line");
       decoratedLines.push(line);
     });
   };
 
   editor.on("changes", renderMarkers);
-  renderMarkers();
-}
+  section.querySelectorAll("[data-drag-annotation-type]").forEach((button) => {
+    button.addEventListener("dragstart", (event) => {
+      const payload = {
+        type: button.dataset.dragAnnotationType,
+        refId: button.dataset.dragAnnotationId,
+      };
+      event.dataTransfer.effectAllowed = "copy";
+      event.dataTransfer.setData(ANNOTATION_MIME, JSON.stringify(payload));
+      button.classList.add("is-dragging");
+    });
+    button.addEventListener("dragend", () => {
+      button.classList.remove("is-dragging");
+      removeDropLine();
+      editor.getWrapperElement().classList.remove("is-annotation-dragover");
+    });
+  });
 
-function insertSpeakerMarker(editor, character) {
-  const selectedText = editor.getSelection();
-  const marker = `> **${character.name}**：`;
-
-  if (selectedText) {
-    const lines = selectedText.split("\n");
-    const quotedSelection = lines
-      .map((line, index) => `${index === 0 ? marker : ">"}${line ? ` ${line}` : ""}`)
-      .join("\n");
-    editor.replaceSelection(quotedSelection, "around");
-    editor.focus();
-    return;
-  }
-
-  const cursor = editor.getCursor();
-  const line = editor.getLine(cursor.line);
-  const currentMarker = line.match(SPEAKER_MARKER_PATTERN);
-
-  if (currentMarker) {
-    editor.replaceRange(
-      marker,
-      { line: cursor.line, ch: currentMarker.index },
-      { line: cursor.line, ch: currentMarker[0].length },
+  const wrapper = editor.getWrapperElement();
+  wrapper.addEventListener("dragover", (event) => {
+    if (!Array.from(event.dataTransfer.types).includes(ANNOTATION_MIME)) return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.dataTransfer.dropEffect = "copy";
+    const position = editor.coordsChar(
+      { left: event.clientX, top: event.clientY },
+      "window",
     );
-    const lengthDelta = marker.length - currentMarker[0].length;
-    editor.setCursor({
-      line: cursor.line,
-      ch: Math.max(marker.length, cursor.ch + lengthDelta),
-    });
-  } else {
-    editor.replaceRange(`${marker} `, { line: cursor.line, ch: 0 });
-    editor.setCursor({
-      line: cursor.line,
-      ch: cursor.ch + marker.length + 1,
-    });
-  }
-  editor.focus();
+    const nextDropLine = editor.getLineHandle(position.line);
+    if (nextDropLine !== dropLine) {
+      removeDropLine();
+      dropLine = nextDropLine;
+      editor.addLineClass(dropLine, "background", "trial-annotation-drop-line");
+    }
+    wrapper.classList.add("is-annotation-dragover");
+  }, true);
+  wrapper.addEventListener("dragleave", (event) => {
+    if (wrapper.contains(event.relatedTarget)) return;
+    removeDropLine();
+    wrapper.classList.remove("is-annotation-dragover");
+  }, true);
+  wrapper.addEventListener("drop", (event) => {
+    const encoded = event.dataTransfer.getData(ANNOTATION_MIME);
+    if (!encoded) return;
+    event.preventDefault();
+    event.stopPropagation();
+    let payload;
+    try {
+      payload = JSON.parse(encoded);
+    } catch {
+      return;
+    }
+    const isValidPayload =
+      (payload.type === "character" &&
+        CHARACTERS.some((character) => character.id === payload.refId)) ||
+      (payload.type === "badge" &&
+        NOTE_BADGES.some((badge) => badge.id === payload.refId));
+    if (!isValidPayload) return;
+    const line = editor.coordsChar(
+      { left: event.clientX, top: event.clientY },
+      "window",
+    ).line;
+    const handle = editor.getLineHandle(line);
+    removeDropLine();
+    wrapper.classList.remove("is-annotation-dragover");
+    if (
+      !handle ||
+      runtimeAnnotations.some(
+        (item) =>
+          item.handle === handle &&
+          item.annotation.type === payload.type &&
+          item.annotation.refId === payload.refId,
+      )
+    ) {
+      return;
+    }
+    const annotation = {
+      id: crypto.randomUUID(),
+      type: payload.type,
+      refId: payload.refId,
+      line,
+    };
+    annotations.push(annotation);
+    runtimeAnnotations.push({ annotation, handle });
+    renderMarkers();
+    onChange?.();
+    onAdded?.(annotation);
+  }, true);
+
+  renderMarkers();
 }
 
 function defaultCase(title = "事件・捜査記録") {
@@ -313,12 +591,14 @@ function defaultCase(title = "事件・捜査記録") {
     selectedMapId: "1f",
     textareaHeights: {},
     caseNote: "",
+    caseAnnotations: [],
     characterFiles: Object.fromEntries(
       CHARACTERS.map((character) => [
         character.id,
         {
           note: "",
           isDead: false,
+          annotations: [],
         },
       ]),
     ),
@@ -391,9 +671,11 @@ function normalizeCase(saved, fallback = defaultCase()) {
         : typeof file.details === "string"
           ? file.details
           : migratedNote;
+    const migrated = migrateLegacySpeakerMarkers(note, file.annotations);
     characterFiles[character.id] = {
-      note,
+      note: migrated.note,
       isDead: file.isDead === true,
+      annotations: migrated.annotations,
     };
   });
   const legacyCaseNote = CASE_FIELDS.flatMap((field) => {
@@ -405,6 +687,14 @@ function normalizeCase(saved, fallback = defaultCase()) {
   })
     .join("\n")
     .trim();
+  const caseNote =
+    typeof saved.caseNote === "string"
+      ? saved.caseNote
+      : legacyCaseNote;
+  const migratedCaseNote = migrateLegacySpeakerMarkers(
+    caseNote,
+    saved.caseAnnotations,
+  );
   return {
     id:
       typeof saved.id === "string" && saved.id
@@ -440,10 +730,8 @@ function normalizeCase(saved, fallback = defaultCase()) {
           height <= 5000,
       ),
     ),
-    caseNote:
-      typeof saved.caseNote === "string"
-        ? saved.caseNote
-        : legacyCaseNote,
+    caseNote: migratedCaseNote.note,
+    caseAnnotations: migratedCaseNote.annotations,
     characterFiles,
     mapNotes: Object.fromEntries(
       MAPS.map((map) => [
@@ -1006,7 +1294,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
               型を挿入
             </button>
           </div>
-          ${renderSpeakerToolbar()}
+          ${renderAnnotationToolbar(data.characterFiles)}
           <div class="trial-character-vim-editor trial-case-vim-editor">
             <textarea
               id="trial-case-note"
@@ -1044,7 +1332,16 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       },
     });
     state.characterEditors.push(editor);
-    enableSpeakerMarkers(editor);
+    enableLineAnnotations(editor, section, data.caseAnnotations, {
+      onChange: schedulePersist,
+      onAdded: (annotation) => {
+        const label =
+          annotation.type === "character"
+            ? findCharacter(annotation.refId).name
+            : NOTE_BADGES.find((badge) => badge.id === annotation.refId)?.label;
+        toast(`${label}を行に付けました`);
+      },
+    });
     editor.on("change", () => {
       const wasFilled = Boolean(data.caseNote.trim());
       data.caseNote = editor.getValue();
@@ -1070,13 +1367,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         editor.replaceSelection(insertion, "end");
         editor.focus();
       });
-    section.querySelectorAll("[data-insert-speaker]").forEach((button) => {
-      button.addEventListener("click", () => {
-        const character = findCharacter(button.dataset.insertSpeaker);
-        insertSpeakerMarker(editor, character);
-        toast(`${character.name}の発言としてマークしました`);
-      });
-    });
     editor.refresh();
   }
 
@@ -1119,7 +1409,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
                   </button>
                 </div>
               </div>
-              ${renderSpeakerToolbar()}
+              ${renderAnnotationToolbar(data.characterFiles)}
               <div class="trial-character-vim-editor">
                 <textarea
                   id="${editorId}"
@@ -1163,7 +1453,16 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
         },
       });
       state.characterEditors.push(editor);
-      enableSpeakerMarkers(editor);
+      enableLineAnnotations(editor, section, file.annotations, {
+        onChange: schedulePersist,
+        onAdded: (annotation) => {
+          const label =
+            annotation.type === "character"
+              ? findCharacter(annotation.refId).name
+              : NOTE_BADGES.find((badge) => badge.id === annotation.refId)?.label;
+          toast(`${label}を行に付けました`);
+        },
+      });
 
       editor.on("change", () => {
         const wasFilled = Boolean(file.note.trim());
@@ -1180,13 +1479,6 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
       });
       editor.on("vim-mode-change", (nextMode) => {
         mode.textContent = (nextMode.mode || "normal").toUpperCase();
-      });
-      section.querySelectorAll("[data-insert-speaker]").forEach((button) => {
-        button.addEventListener("click", () => {
-          const character = findCharacter(button.dataset.insertSpeaker);
-          insertSpeakerMarker(editor, character);
-          toast(`${character.name}の発言としてマークしました`);
-        });
       });
       editor.refresh();
     });
@@ -1407,6 +1699,7 @@ export function createWitchTrialMode({ toast = () => {} } = {}) {
           file.isDead = event.target.checked;
           persist();
           renderCharacterList();
+          renderView();
           toast(
             file.isDead
               ? `${character.name}を死亡者として一覧から非表示にしました`

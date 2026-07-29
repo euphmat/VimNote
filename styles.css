@@ -3578,18 +3578,25 @@ input:focus-visible,
   gap: 8px;
 }
 
-.trial-speaker-toolbar {
-  display: flex;
+.trial-annotation-toolbar {
+  display: grid;
   min-width: 0;
-  align-items: center;
-  gap: 9px;
+  gap: 5px;
   padding: 7px 10px;
   border-bottom: 1px solid var(--trial-border);
   background: color-mix(in srgb, var(--trial-raised) 74%, var(--trial-panel));
 }
 
-.trial-speaker-toolbar-label {
+.trial-annotation-row {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 9px;
+}
+
+.trial-annotation-toolbar-label {
   display: inline-flex;
+  width: 48px;
   flex: none;
   align-items: center;
   gap: 5px;
@@ -3599,10 +3606,65 @@ input:focus-visible,
   white-space: nowrap;
 }
 
-.trial-speaker-toolbar-label svg {
+.trial-annotation-toolbar-label svg {
   width: 13px;
   height: 13px;
   color: var(--trial-accent);
+}
+
+.trial-speaker-groups {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  align-items: center;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 1px 2px 3px;
+  scrollbar-width: thin;
+}
+
+.trial-speaker-group {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+}
+
+.trial-speaker-group + .trial-speaker-group {
+  padding-left: 12px;
+  border-left: 1px solid var(--trial-border-strong);
+}
+
+.trial-speaker-group-heading {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 3px;
+  color: var(--trial-muted);
+  font-size: 8px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.trial-speaker-group-heading svg {
+  width: 10px;
+  height: 10px;
+  color: var(--trial-accent);
+}
+
+.trial-speaker-group.is-staff .trial-speaker-group-heading svg {
+  color: var(--trial-subtle);
+}
+
+.trial-speaker-group-heading small {
+  display: inline-grid;
+  min-width: 14px;
+  height: 14px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--trial-raised-strong);
+  color: var(--trial-subtle);
+  font-size: 7px;
 }
 
 .trial-speaker-list {
@@ -3610,6 +3672,21 @@ input:focus-visible,
   min-width: 0;
   flex: 1;
   gap: 4px;
+  overflow-x: auto;
+  padding: 2px;
+  scrollbar-width: thin;
+}
+
+.trial-speaker-group .trial-speaker-list {
+  flex: none;
+  overflow: visible;
+}
+
+.trial-badge-list {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  gap: 5px;
   overflow-x: auto;
   padding: 2px;
   scrollbar-width: thin;
@@ -3625,7 +3702,7 @@ input:focus-visible,
   border-radius: 50%;
   background: var(--trial-panel);
   box-shadow: 0 1px 0 rgba(0, 0, 0, 0.22);
-  cursor: pointer;
+  cursor: grab;
   transition:
     border-color 120ms ease,
     box-shadow 120ms ease,
@@ -3639,6 +3716,17 @@ input:focus-visible,
   transform: translateY(-1px);
 }
 
+.trial-speaker-button:active,
+.trial-badge-button:active {
+  cursor: grabbing;
+}
+
+.trial-speaker-button.is-dragging,
+.trial-badge-button.is-dragging {
+  opacity: 0.38;
+  transform: scale(0.9);
+}
+
 .trial-speaker-button:focus-visible {
   outline: 2px solid var(--trial-accent);
   outline-offset: 2px;
@@ -3650,12 +3738,95 @@ input:focus-visible,
   object-fit: cover;
 }
 
-.trial-speaker-toolbar > small {
+.trial-badge-button {
+  display: inline-flex;
+  min-height: 25px;
   flex: none;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 7px;
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  background: color-mix(in srgb, currentColor 9%, var(--trial-panel));
+  color: var(--trial-muted);
+  cursor: grab;
+  font-size: 8px;
+  font-weight: 800;
+  white-space: nowrap;
+  transition:
+    filter 120ms ease,
+    transform 120ms ease;
+}
+
+.trial-badge-button:hover {
+  filter: brightness(1.22);
+  transform: translateY(-1px);
+}
+
+.trial-badge-button:focus-visible {
+  outline: 2px solid var(--trial-accent);
+  outline-offset: 2px;
+}
+
+.trial-badge-button svg {
+  width: 11px;
+  height: 11px;
+}
+
+.trial-badge-button.is-violet,
+.trial-line-annotation.is-violet {
+  color: #be8cff;
+}
+
+.trial-badge-button.is-blue,
+.trial-line-annotation.is-blue {
+  color: #7eb7ff;
+}
+
+.trial-badge-button.is-teal,
+.trial-line-annotation.is-teal {
+  color: #6ed7c7;
+}
+
+.trial-badge-button.is-amber,
+.trial-line-annotation.is-amber {
+  color: #eac36d;
+}
+
+.trial-badge-button.is-cyan,
+.trial-line-annotation.is-cyan {
+  color: #78d4e8;
+}
+
+.trial-badge-button.is-red,
+.trial-line-annotation.is-red {
+  color: #ef8290;
+}
+
+.trial-badge-button.is-green,
+.trial-line-annotation.is-green {
+  color: #7fd39c;
+}
+
+.trial-badge-button.is-gray,
+.trial-line-annotation.is-gray {
+  color: #aeb5c4;
+}
+
+.trial-annotation-toolbar > small {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding-left: 57px;
   color: var(--trial-subtle);
   font-size: 8px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.trial-annotation-toolbar > small svg {
+  width: 10px;
+  height: 10px;
 }
 
 .trial-character-vim-editor {
@@ -3701,31 +3872,66 @@ input:focus-visible,
   color: var(--trial-subtle);
 }
 
-.trial-character-vim-editor .trial-speaker-gutter {
-  width: 34px;
+.trial-character-vim-editor .trial-annotation-gutter {
+  width: 76px;
 }
 
-.trial-speaker-gutter-marker {
-  display: block;
-  width: 25px;
-  height: 25px;
-  overflow: hidden;
-  margin: 1px 4px;
-  border: 1px solid color-mix(in srgb, var(--trial-accent) 70%, var(--trial-border));
-  border-radius: 50%;
+.trial-line-annotation-group {
+  display: flex;
+  min-width: max-content;
+  align-items: center;
+  padding: 0 3px;
+}
+
+.trial-line-annotation {
+  position: relative;
+  display: inline-grid;
+  width: 21px;
+  height: 21px;
+  flex: 0 0 21px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid currentColor;
+  border-radius: 6px;
   background: var(--trial-raised);
   box-shadow:
     0 0 0 2px var(--trial-panel),
     0 1px 4px rgba(0, 0, 0, 0.34);
+  cursor: pointer;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
 }
 
-.trial-speaker-gutter-marker img {
+.trial-line-annotation + .trial-line-annotation {
+  margin-left: -5px;
+}
+
+.trial-line-annotation:hover,
+.trial-line-annotation:focus-visible {
+  z-index: 2;
+  outline: 2px solid var(--trial-accent);
+  outline-offset: 1px;
+  transform: translateY(-1px);
+}
+
+.trial-line-annotation.is-character {
+  width: 24px;
+  height: 24px;
+  flex-basis: 24px;
+  overflow: hidden;
+  border-color: color-mix(in srgb, var(--trial-accent) 70%, var(--trial-border));
+  border-radius: 50%;
+  color: var(--trial-accent);
+}
+
+.trial-line-annotation img {
   width: 100%;
   height: 100%;
   object-fit: cover;
 }
 
-.trial-character-vim-editor .trial-speaker-line {
+.trial-character-vim-editor .trial-annotated-line {
   background: linear-gradient(
     90deg,
     var(--trial-accent-soft),
@@ -3733,6 +3939,16 @@ input:focus-visible,
     transparent
   );
   border-left: 2px solid var(--trial-accent);
+}
+
+.trial-character-vim-editor .trial-annotation-drop-line {
+  background: color-mix(in srgb, var(--trial-accent) 20%, transparent);
+  border-top: 1px dashed var(--trial-accent);
+  border-bottom: 1px dashed var(--trial-accent);
+}
+
+.trial-character-vim-editor .CodeMirror.is-annotation-dragover {
+  box-shadow: inset 0 0 0 2px var(--trial-accent);
 }
 
 .trial-character-vim-editor .CodeMirror-cursor {
@@ -4790,12 +5006,11 @@ input:focus-visible,
     height: 12px;
   }
 
-  .trial-speaker-toolbar {
-    gap: 7px;
+  .trial-annotation-toolbar {
     padding-inline: 8px;
   }
 
-  .trial-speaker-toolbar > small {
+  .trial-annotation-toolbar > small {
     display: none;
   }
 
