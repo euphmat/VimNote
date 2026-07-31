@@ -125,6 +125,28 @@ export function createCharacterIconInserter({
     renderCharacterVisibility();
   }
 
+  function refreshUsageState() {
+    const content = editor.getValue();
+    characterCards.forEach(({ card, button }, characterId) => {
+      const character = characters.find((item) => item.id === characterId);
+      if (!character) return;
+      const used = [
+        characterMarkdown(character),
+        characterMarkdown(character, character.name),
+      ].some((markdown) => content.includes(markdown));
+      card.classList.toggle("is-used", used);
+      button.title = used
+        ? `${character.name}を挿入（このノートで使用済み）`
+        : `${character.name}を挿入`;
+      button.setAttribute(
+        "aria-label",
+        used
+          ? `${character.name}のアイコンを挿入、このノートで使用済み`
+          : `${character.name}のアイコンを挿入`,
+      );
+    });
+  }
+
   function isNativePopoverOpen() {
     return (
       typeof menu.showPopover === "function" &&
@@ -213,6 +235,7 @@ export function createCharacterIconInserter({
         });
       });
     });
+    refreshUsageState();
   }
 
   characters.forEach((character) => {
@@ -263,7 +286,11 @@ export function createCharacterIconInserter({
 
     card.append(button, deceasedToggle);
     grid.append(card);
-    characterCards.set(character.id, { card, input: deceasedInput });
+    characterCards.set(character.id, {
+      card,
+      input: deceasedInput,
+      button,
+    });
   });
 
   showDeceased.addEventListener("change", () => {
