@@ -30,7 +30,7 @@ import {
   clearVimSearch,
   createVimMarkdownEditor,
 } from "./js/vim-editor.js";
-import { createWitchTrialMode } from "./js/witch-trial.js";
+import { createCharacterIconInserter } from "./js/character-icons.js";
 
 const {
   activeNote: ACTIVE_KEY,
@@ -124,6 +124,9 @@ const {
     themeDialog: document.querySelector("#theme-dialog"),
     themeGrid: document.querySelector("#theme-grid"),
     toastRegion: document.querySelector("#toast-region"),
+    characterIconButton: document.querySelector("#character-icon-button"),
+    characterIconMenu: document.querySelector("#character-icon-menu"),
+    characterIconGrid: document.querySelector("#character-icon-grid"),
   };
 
   removeLegacyStarterNotes();
@@ -148,6 +151,13 @@ const {
       onClearSearch: () => clearSearchHighlight(),
     },
   );
+  const characterIconInserter = createCharacterIconInserter({
+    editor,
+    trigger: el.characterIconButton,
+    menu: el.characterIconMenu,
+    grid: el.characterIconGrid,
+    onInsert: (character) => toast(`${character.name} icon inserted`),
+  });
 
   // Data migration and persistence -------------------------------------------
   function migrateLegacyFolders() {
@@ -749,7 +759,10 @@ const {
     const note = getActiveNote();
     el.emptyEditor.classList.toggle("hidden", Boolean(note));
     el.editorShell.classList.toggle("hidden", !note);
-    if (!note) return;
+    if (!note) {
+      characterIconInserter.closeMenu();
+      return;
+    }
 
     editor._loadingNote = true;
     editor.setValue(note.content || "");
@@ -1689,6 +1702,7 @@ const {
 
   function clearSearchHighlight() {
     clearVimSearch(editor);
+    characterIconInserter.refresh();
     toast("Search highlight cleared");
   }
 
@@ -1761,8 +1775,6 @@ const {
   }
 
   // Event wiring -------------------------------------------------------------
-  createWitchTrialMode({ toast });
-
   editor.on("change", () => {
     if (editor._loadingNote) return;
     scheduleSave();
@@ -1904,7 +1916,6 @@ const {
         event.altKey ||
         event.shiftKey ||
         !getActiveNote() ||
-        document.documentElement.dataset.appMode === "witch-trial" ||
         document.querySelector("dialog[open]") ||
         !el.folderContextMenu.classList.contains("hidden") ||
         !el.noteContextMenu.classList.contains("hidden")
@@ -1935,7 +1946,6 @@ const {
     if (event.key === "Escape" && !el.noteContextMenu.classList.contains("hidden")) {
       closeNoteContextMenu();
     }
-    if (document.documentElement.dataset.appMode === "witch-trial") return;
     const modifier = event.metaKey || event.ctrlKey;
     if (modifier && event.key.toLowerCase() === "k") {
       event.preventDefault();

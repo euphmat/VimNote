@@ -27,6 +27,7 @@ export function plainExcerpt(content) {
     content
       .replace(/^#[ \t]+.*(?:\r?\n|$)/, "")
       .replace(/```[\s\S]*?```/g, " code ")
+      .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
       .replace(/[#>*_`[\]()!-]/g, " ")
       .replace(/\s+/g, " ")
       .trim() || "No content yet"

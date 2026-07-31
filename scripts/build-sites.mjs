@@ -10,18 +10,20 @@ await rm(output, { recursive: true, force: true });
 await mkdir(resolve(output, "server"), { recursive: true });
 await mkdir(resolve(output, ".openai"), { recursive: true });
 await mkdir(client, { recursive: true });
+await mkdir(resolve(client, "Assets"), { recursive: true });
 
 await Promise.all(
   ["index.html", "app.js", "styles.css", "favicon.svg"].map((file) =>
     cp(resolve(root, file), resolve(client, file)),
   ),
 );
-await Promise.all(
-  ["js", "Assets"].map((directory) =>
-    cp(resolve(root, directory), resolve(client, directory), {
-      recursive: true,
-    }),
-  ),
+await cp(resolve(root, "js"), resolve(client, "js"), {
+  recursive: true,
+});
+await cp(
+  resolve(root, "Assets/Character"),
+  resolve(client, "Assets/Character"),
+  { recursive: true },
 );
 
 await cp(
