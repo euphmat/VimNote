@@ -84,6 +84,20 @@ function createInlineWidget(editor, character, getMark) {
   return button;
 }
 
+function createDropPreview(character) {
+  const preview = document.createElement("span");
+  preview.className = "character-inline-icon character-inline-icon-drop-preview";
+  preview.setAttribute("aria-hidden", "true");
+
+  const image = document.createElement("img");
+  image.src = character.image;
+  image.alt = "";
+  const label = document.createElement("span");
+  label.textContent = character.shortName;
+  preview.append(image, label);
+  return preview;
+}
+
 export function createCharacterIconInserter({
   editor,
   trigger,
@@ -92,6 +106,8 @@ export function createCharacterIconInserter({
   onInsert = () => {},
 }) {
   let inlineMarks = [];
+  let dropPreview = null;
+  let draggedCharacter = null;
   let windowDrag = null;
   const paletteState = loadPaletteState();
   const characterCards = new Map();
@@ -199,6 +215,31 @@ export function createCharacterIconInserter({
     onInsert(character);
   }
 
+  function clearDropPreview() {
+    dropPreview?.mark.clear();
+    dropPreview = null;
+  }
+
+  function showDropPreview(character, position) {
+    if (
+      dropPreview?.characterId === character.id &&
+      dropPreview.position.line === position.line &&
+      dropPreview.position.ch === position.ch
+    ) {
+      return;
+    }
+
+    clearDropPreview();
+    dropPreview = {
+      characterId: character.id,
+      position,
+      mark: editor.setBookmark(position, {
+        widget: createDropPreview(character),
+        insertLeft: true,
+      }),
+    };
+  }
+
   function refresh() {
     inlineMarks.forEach((mark) => mark.clear());
     inlineMarks = [];
@@ -271,12 +312,16 @@ export function createCharacterIconInserter({
 
     button.addEventListener("click", () => insert(character));
     button.addEventListener("dragstart", (event) => {
+      draggedCharacter = character;
+      clearDropPreview();
       event.dataTransfer.effectAllowed = "copy";
       event.dataTransfer.setData(CHARACTER_DRAG_MIME, character.id);
       event.dataTransfer.setData("text/plain", characterMarkdown(character));
       button.classList.add("is-dragging");
     });
     button.addEventListener("dragend", () => {
+      draggedCharacter = null;
+      clearDropPreview();
       button.classList.remove("is-dragging");
       editor.getWrapperElement().classList.remove("is-character-icon-dragover");
     });
@@ -356,29 +401,52 @@ export function createCharacterIconInserter({
   window.addEventListener("resize", keepWindowInViewport);
 
   const wrapper = editor.getWrapperElement();
-  wrapper.addEventListener("dragover", (event) => {
-    if (!Array.from(event.dataTransfer.types).includes(CHARACTER_DRAG_MIME)) return;
-    event.preventDefault();
-    event.dataTransfer.dropEffect = "copy";
-    wrapper.classList.add("is-character-icon-dragover");
-  });
+  wrapper.addEventListener(
+    "dragover",
+    (event) => {
+      if (!Array.from(event.dataTransfer.types).includes(CHARACTER_DRAG_MIME)) {
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      event.dataTransfer.dropEffect = "copy";
+      wrapper.classList.add("is-character-icon-dragover");
+      if (!draggedCharacter) return;
+      const position = editor.coordsChar(
+        { left: event.clientX, top: event.clientY },
+        "window",
+      );
+      showDropPreview(draggedCharacter, position);
+    },
+    true,
+  );
   wrapper.addEventListener("dragleave", (event) => {
     if (!wrapper.contains(event.relatedTarget)) {
+      clearDropPreview();
       wrapper.classList.remove("is-character-icon-dragover");
     }
   });
-  wrapper.addEventListener("drop", (event) => {
-    const characterId = event.dataTransfer.getData(CHARACTER_DRAG_MIME);
-    const character = characters.find((item) => item.id === characterId);
-    if (!character) return;
-    event.preventDefault();
-    wrapper.classList.remove("is-character-icon-dragover");
-    const position = editor.coordsChar(
-      { left: event.clientX, top: event.clientY },
-      "window",
-    );
-    insert(character, position);
-  });
+  wrapper.addEventListener(
+    "drop",
+    (event) => {
+      const characterId = event.dataTransfer.getData(CHARACTER_DRAG_MIME);
+      const character = characters.find((item) => item.id === characterId);
+      if (!character) return;
+      event.preventDefault();
+      event.stopPropagation();
+      wrapper.classList.remove("is-character-icon-dragover");
+      const position =
+        dropPreview?.mark.find() ||
+        editor.coordsChar(
+          { left: event.clientX, top: event.clientY },
+          "window",
+        );
+      clearDropPreview();
+      draggedCharacter = null;
+      insert(character, position);
+    },
+    true,
+  );
 
   editor.on("changes", refresh);
   refresh();
