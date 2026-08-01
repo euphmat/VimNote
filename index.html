@@ -296,6 +296,17 @@
                     <i data-lucide="circle-user-round" aria-hidden="true"></i>
                   </button>
                 </div>
+                <button
+                  id="evidence-button"
+                  class="icon-button"
+                  type="button"
+                  aria-label="証拠品を管理"
+                  aria-controls="evidence-menu"
+                  aria-expanded="false"
+                  data-tooltip="証拠品"
+                >
+                  <i data-lucide="package-search" aria-hidden="true"></i>
+                </button>
                 <div class="view-switch" role="group" aria-label="View mode">
                   <button class="view-option is-active" data-view="edit" type="button">Edit</button>
                   <button class="view-option" data-view="preview" type="button">Preview</button>
@@ -376,6 +387,76 @@
         </label>
       </div>
       <div id="character-icon-grid" class="character-icon-grid"></div>
+    </div>
+
+    <div
+      id="evidence-menu"
+      class="character-icon-menu evidence-menu hidden"
+      role="dialog"
+      aria-labelledby="evidence-menu-title"
+      popover="manual"
+    >
+      <div class="character-icon-menu-heading" data-evidence-drag-handle>
+        <div class="character-icon-menu-title">
+          <i data-lucide="grip-vertical" aria-hidden="true"></i>
+          <div>
+            <strong id="evidence-menu-title">証拠品</strong>
+            <small>名前と捜査メモを端末内に保存</small>
+          </div>
+        </div>
+        <div class="evidence-heading-actions">
+          <button
+            class="evidence-add-button"
+            type="button"
+            data-evidence-add
+            aria-label="証拠品を追加"
+            aria-expanded="false"
+            aria-controls="evidence-form"
+          >
+            <i data-lucide="plus" aria-hidden="true"></i>
+          </button>
+          <button
+            class="character-icon-menu-close"
+            type="button"
+            data-evidence-close
+            aria-label="証拠品を閉じる"
+          >
+            <i data-lucide="x" aria-hidden="true"></i>
+          </button>
+        </div>
+      </div>
+
+      <form id="evidence-form" class="evidence-form hidden">
+        <label for="evidence-name">証拠品の名前</label>
+        <input
+          id="evidence-name"
+          class="text-input"
+          maxlength="80"
+          autocomplete="off"
+          placeholder="例：血の付いたロープ"
+          required
+        />
+        <label for="evidence-memo">メモ</label>
+        <textarea
+          id="evidence-memo"
+          class="text-input evidence-memo-input"
+          maxlength="2000"
+          placeholder="発見場所、状態、気になった点など"
+        ></textarea>
+        <div class="evidence-form-actions">
+          <button class="secondary-button" type="button" data-evidence-cancel>
+            キャンセル
+          </button>
+          <button class="primary-button" type="submit">追加</button>
+        </div>
+      </form>
+
+      <div id="evidence-list" class="evidence-list"></div>
+      <div id="evidence-empty" class="evidence-empty">
+        <i data-lucide="package-open" aria-hidden="true"></i>
+        <strong>証拠品はまだありません</strong>
+        <span>右上の＋から追加できます</span>
+      </div>
     </div>
 
     <div id="mobile-backdrop" class="mobile-backdrop hidden"></div>

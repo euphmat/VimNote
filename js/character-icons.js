@@ -104,6 +104,7 @@ export function createCharacterIconInserter({
   menu,
   grid,
   onInsert = () => {},
+  onOpen = () => {},
 }) {
   let inlineMarks = [];
   let dropPreview = null;
@@ -199,6 +200,7 @@ export function createCharacterIconInserter({
   }
 
   function openMenu() {
+    onOpen();
     menu.classList.remove("hidden");
     if (typeof menu.showPopover === "function" && !isNativePopoverOpen()) {
       menu.showPopover();

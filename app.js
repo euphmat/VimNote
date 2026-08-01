@@ -31,6 +31,7 @@ import {
   createVimMarkdownEditor,
 } from "./js/vim-editor.js";
 import { createCharacterIconInserter } from "./js/character-icons.js";
+import { createEvidenceManager } from "./js/evidence.js";
 
 const {
   activeNote: ACTIVE_KEY,
@@ -127,6 +128,13 @@ const {
     characterIconButton: document.querySelector("#character-icon-button"),
     characterIconMenu: document.querySelector("#character-icon-menu"),
     characterIconGrid: document.querySelector("#character-icon-grid"),
+    evidenceButton: document.querySelector("#evidence-button"),
+    evidenceMenu: document.querySelector("#evidence-menu"),
+    evidenceList: document.querySelector("#evidence-list"),
+    evidenceEmpty: document.querySelector("#evidence-empty"),
+    evidenceForm: document.querySelector("#evidence-form"),
+    evidenceName: document.querySelector("#evidence-name"),
+    evidenceMemo: document.querySelector("#evidence-memo"),
   };
 
   removeLegacyStarterNotes();
@@ -151,12 +159,29 @@ const {
       onClearSearch: () => clearSearchHighlight(),
     },
   );
+  let evidenceManager = null;
   const characterIconInserter = createCharacterIconInserter({
     editor,
     trigger: el.characterIconButton,
     menu: el.characterIconMenu,
     grid: el.characterIconGrid,
     onInsert: (character) => toast(`${character.name} icon inserted`),
+    onOpen: () => evidenceManager?.closeMenu(),
+  });
+  evidenceManager = createEvidenceManager({
+    trigger: el.evidenceButton,
+    menu: el.evidenceMenu,
+    list: el.evidenceList,
+    empty: el.evidenceEmpty,
+    form: el.evidenceForm,
+    nameInput: el.evidenceName,
+    memoInput: el.evidenceMemo,
+    onOpen: () => characterIconInserter.closeMenu(),
+    onChange: (message) => {
+      toast(message);
+      void updateStorageStatus();
+    },
+    onIconsChanged: () => lucide.createIcons(),
   });
 
   // Data migration and persistence -------------------------------------------
@@ -761,6 +786,7 @@ const {
     el.editorShell.classList.toggle("hidden", !note);
     if (!note) {
       characterIconInserter.closeMenu();
+      evidenceManager.closeMenu();
       return;
     }
 
