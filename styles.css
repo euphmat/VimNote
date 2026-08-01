@@ -1784,6 +1784,31 @@ input:focus-visible,
   color: var(--syntax-code) !important;
 }
 
+.cm-inline-code-badge {
+  padding-block: 0.08em;
+  border-top: 1px solid color-mix(in srgb, var(--syntax-code) 38%, var(--line));
+  border-bottom: 1px solid color-mix(in srgb, var(--syntax-code) 38%, var(--line));
+  background: color-mix(in srgb, var(--syntax-code) 14%, var(--paper-deep));
+  color: var(--syntax-code) !important;
+  font-weight: 650;
+}
+
+.cm-inline-code-badge-start {
+  padding-left: 0.42em;
+  border-left: 1px solid color-mix(in srgb, var(--syntax-code) 38%, var(--line));
+  border-radius: 0.42em 0 0 0.42em;
+}
+
+.cm-inline-code-badge-end {
+  padding-right: 0.42em;
+  border-right: 1px solid color-mix(in srgb, var(--syntax-code) 38%, var(--line));
+  border-radius: 0 0.42em 0.42em 0;
+}
+
+.cm-inline-code-badge-start.cm-inline-code-badge-end {
+  border-radius: 0.42em;
+}
+
 .cm-strong {
   color: var(--ink) !important;
 }
@@ -2025,11 +2050,14 @@ input:focus-visible,
 }
 
 .markdown-preview code {
-  padding: 2px 5px;
-  border-radius: 4px;
-  background: var(--paper-deep);
+  padding: 2px 7px;
+  border: 1px solid color-mix(in srgb, var(--syntax-code) 38%, var(--line));
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--syntax-code) 14%, var(--paper-deep));
+  color: var(--syntax-code);
   font-family: var(--font-sarasa);
   font-size: 0.85em;
+  font-weight: 650;
 }
 
 .markdown-preview pre {
@@ -2043,7 +2071,11 @@ input:focus-visible,
 
 .markdown-preview pre code {
   padding: 0;
+  border: 0;
+  border-radius: 0;
   background: transparent;
+  color: inherit;
+  font-weight: inherit;
 }
 
 .markdown-preview .hljs {

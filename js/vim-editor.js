@@ -50,6 +50,104 @@ function installHeadingLineStyles(editor) {
   refreshHeadingLines();
 }
 
+function isEscapedBacktick(text, index) {
+  let backslashes = 0;
+  for (let cursor = index - 1; cursor >= 0 && text[cursor] === "\\"; cursor -= 1) {
+    backslashes += 1;
+  }
+  return backslashes % 2 === 1;
+}
+
+function inlineCodeRanges(text) {
+  const ranges = [];
+  let cursor = 0;
+
+  while (cursor < text.length) {
+    if (text[cursor] !== "`" || isEscapedBacktick(text, cursor)) {
+      cursor += 1;
+      continue;
+    }
+
+    const start = cursor;
+    while (text[cursor] === "`") cursor += 1;
+    const delimiterLength = cursor - start;
+    let closingStart = cursor;
+
+    while (closingStart < text.length) {
+      if (text[closingStart] !== "`") {
+        closingStart += 1;
+        continue;
+      }
+
+      let closingEnd = closingStart;
+      while (text[closingEnd] === "`") closingEnd += 1;
+      if (closingEnd - closingStart === delimiterLength) {
+        ranges.push({ from: start, to: closingEnd });
+        cursor = closingEnd;
+        break;
+      }
+      closingStart = closingEnd;
+    }
+
+    if (closingStart >= text.length) cursor = start + delimiterLength;
+  }
+
+  return ranges;
+}
+
+function installInlineCodeBadges(editor) {
+  let badges = [];
+
+  function refreshInlineCodeBadges() {
+    badges.forEach((badge) => badge.clear());
+    badges = [];
+    let fence = null;
+
+    editor.operation(() => {
+      editor.eachLine((lineHandle) => {
+        const line = editor.getLineNumber(lineHandle);
+        if (line === null) return;
+
+        const fenceMatch = lineHandle.text.match(/^\s{0,3}(`{3,}|~{3,})/);
+        if (fenceMatch) {
+          const marker = fenceMatch[1];
+          if (!fence) {
+            fence = { character: marker[0], length: marker.length };
+          } else if (
+            marker[0] === fence.character &&
+            marker.length >= fence.length &&
+            lineHandle.text.slice(fenceMatch[0].length).trim() === ""
+          ) {
+            fence = null;
+          }
+          return;
+        }
+
+        if (fence || /^ {4}/.test(lineHandle.text)) return;
+
+        inlineCodeRanges(lineHandle.text).forEach((range) => {
+          const badge = editor.markText(
+            { line, ch: range.from },
+            { line, ch: range.to },
+            {
+              className: "cm-inline-code-badge",
+              startStyle: "cm-inline-code-badge-start",
+              endStyle: "cm-inline-code-badge-end",
+              inclusiveLeft: false,
+              inclusiveRight: false,
+            },
+          );
+          badge.vimNoteInlineCodeBadge = true;
+          badges.push(badge);
+        });
+      });
+    });
+  }
+
+  editor.on("changes", refreshInlineCodeBadges);
+  refreshInlineCodeBadges();
+}
+
 function installVimBindings() {
   if (vimBindingsInstalled) return;
   vimBindingsInstalled = true;
@@ -70,7 +168,10 @@ function installVimBindings() {
 export function clearVimSearch(editor) {
   try {
     CodeMirror.Vim.handleKey(editor, "<Esc>");
-    editor.getAllMarks().forEach((mark) => mark.clear());
+    editor
+      .getAllMarks()
+      .filter((mark) => !mark.vimNoteInlineCodeBadge)
+      .forEach((mark) => mark.clear());
   } catch {
     // Search marks are internal to the Vim addon; Escape still closes search.
   }
@@ -92,5 +193,6 @@ export function createVimMarkdownEditor(
   editor.state.vimNoteSave = onSave;
   editor.state.vimNoteClearSearch = onClearSearch;
   installHeadingLineStyles(editor);
+  installInlineCodeBadges(editor);
   return editor;
 }
